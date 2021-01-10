@@ -167,7 +167,7 @@ esp_err_t wifi_disconnect(void)
     return ESP_OK;
 }
 
-esp_err_t example_set_connection_info(const char *ssid, const char *passwd)
+esp_err_t wifi_set_connection_info(const char *ssid, const char *passwd)
 {
     strncpy(s_connection_name, ssid, sizeof(s_connection_name));
     strncpy(s_connection_passwd, passwd, sizeof(s_connection_passwd));
