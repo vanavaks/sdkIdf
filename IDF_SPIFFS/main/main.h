@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <time.h>
 
 #include "esp_err.h"
 #include "esp_log.h"
