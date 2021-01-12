@@ -18,19 +18,12 @@
 #include "cmd.h"
 #include "wifi_connect.h"
 #include "sntp_app.h"
-
+#include "nvs_app.h"
 //extern uint8_t sntp_connected;
 
-static void initialize_nvs() {
-	esp_err_t err = nvs_flash_init();
-	if (err == ESP_ERR_NVS_NO_FREE_PAGES) {
-		ESP_ERROR_CHECK(nvs_flash_erase());
-		err = nvs_flash_init();
-	}
-	ESP_ERROR_CHECK(err);
-}
 
-void app_main(void) {
+
+extern "C" void app_main(void) {
 	initialize_nvs();
 	ESP_ERROR_CHECK(esp_netif_init());
 	ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -42,6 +35,4 @@ void app_main(void) {
 	while (sntp_getStat() == 0) {}
 	ESP_LOGI("main", "starting console task");
 	xTaskCreate(&cmd_task, "cmd_task", 8192, NULL, 5, NULL);
-
-
 }

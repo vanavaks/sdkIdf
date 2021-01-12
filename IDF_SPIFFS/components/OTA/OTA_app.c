@@ -215,9 +215,7 @@ static void esp_ota_firm_init(esp_ota_firm_t *ota_firm, const esp_partition_t *u
 
 /** Arguments used by 'join' function */
 static struct {
-    //struct arg_int *timeout;
     struct arg_str *fileName;
-    //struct arg_str *password;
     struct arg_end *end;
 } ota_update_args;
 

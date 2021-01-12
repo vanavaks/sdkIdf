@@ -38,6 +38,10 @@
 
 static EventGroupHandle_t s_connect_event_group;
 static ip4_addr_t s_ip_addr;
+
+#define CONFIG_EXAMPLE_WIFI_SSID "vanavaks"
+#define CONFIG_EXAMPLE_WIFI_PASSWORD "programmer"
+
 static char s_connection_name[32] = CONFIG_EXAMPLE_WIFI_SSID;
 static char s_connection_passwd[32] = CONFIG_EXAMPLE_WIFI_PASSWORD;
 
