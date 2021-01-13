@@ -20,6 +20,89 @@ static const char* TAG = "nvs_app";
 
 const char nameSps[] = "Category1";
 /** command set par */
+
+static struct {
+	struct arg_str *parName;
+	struct arg_dbl *parVal;
+	struct arg_end *end;
+} nvs_setF_args;
+
+
+static int nvs_setF(int argc, char **argv) {
+	int nerrors = arg_parse(argc, argv, (void**) &nvs_setF_args);
+	if (nerrors != 0) {
+		arg_print_errors(stderr, nvs_setF_args.end, argv[0]);
+		return 1;
+	}
+
+	nvs_handle handle;
+	ESP_ERROR_CHECK(nvs_open(nameSps, NVS_READWRITE, &handle));
+	double d = nvs_setF_args.parVal->dval[0];
+	//float f = (float)d;
+	ESP_LOGI(TAG, "Set float parameter %s = '%d'",nvs_setF_args.parName->sval[0], (uint16_t)(d*1000));
+
+	ESP_ERROR_CHECK(nvs_set_blob(handle, nvs_setF_args.parName->sval[0], &d, sizeof(d)));
+	nvs_close(handle);
+
+	return 0;
+}
+
+void register_nvsSetFPar() {
+	nvs_setF_args.parVal = arg_dbl0(NULL, "val", "<f>", "float value");
+	nvs_setF_args.parName = arg_str0(NULL, NULL, "<parName>", "parameter Name");
+	nvs_setF_args.end = arg_end(2);
+
+	const esp_console_cmd_t cmd = {
+			.command = "setF",
+			.help =	"Set float parameter",
+			.hint = NULL,
+			.func = &nvs_setF,
+			.argtable = &nvs_setF_args };
+	ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
+}
+/*****************************************************************************************/
+static struct {
+	struct arg_str *parName;
+	struct arg_end *end;
+} nvs_getF_args;
+
+
+static int nvs_getF(int argc, char **argv) {
+	nvs_handle handle;
+
+	int nerrors = arg_parse(argc, argv, (void**) &nvs_getF_args);
+	if (nerrors != 0) {
+		arg_print_errors(stderr, nvs_getF_args.end, argv[0]);
+		return 1;
+	}
+
+	double val = 0;
+	size_t size = sizeof(val);
+	ESP_ERROR_CHECK(nvs_open(nameSps, NVS_READWRITE, &handle));
+	ESP_LOGI(TAG, "Get float parameter %s",nvs_getF_args.parName->sval[0]);
+	ESP_ERROR_CHECK(nvs_get_blob(handle, nvs_getF_args.parName->sval[0], &val, &size));
+	nvs_close(handle);
+
+	ESP_LOGI(TAG,"Parametrs %s size - %d",nvs_getF_args.parName->sval[0], size);
+	ESP_LOGI(TAG,"Parametr %s = %d",nvs_getF_args.parName->sval[0], (uint32_t)(val*1000));
+	return 0;
+}
+
+void register_nvsGetFPar() {
+	nvs_getF_args.parName = arg_str0(NULL, NULL, "<parName>", "parameter Name");
+	nvs_getF_args.end = arg_end(2);
+
+	const esp_console_cmd_t cmd = {
+			.command = "getF",
+			.help =	"Get float parameter",
+			.hint = NULL,
+			.func = &nvs_getF,
+			.argtable = &nvs_getF_args };
+	ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
+}
+
+
+/********************************************************************************************/
 static struct {
 	struct arg_str *parName;
 	struct arg_str *parVal;
@@ -64,7 +147,7 @@ static int nvs_getI(int argc, char **argv) {
 		return 1;
 	}
 
-	int32_t val;
+	int32_t val = 0;
 
 	ESP_ERROR_CHECK(nvs_open(nameSps, NVS_READWRITE, &handle));
 	ESP_LOGI(TAG, "Get int parameter %s",nvs_getI_args.parName->sval[0]);
@@ -141,10 +224,13 @@ static int nvs_get(int argc, char **argv) {
 	ESP_ERROR_CHECK(nvs_open(nameSps, NVS_READWRITE, &handle));
 	ESP_LOGI(TAG, "Get parameter %s",nvs_get_args.parName->sval[0]);
 	esp_err_t err = nvs_get_str(handle, nvs_get_args.parName->sval[0], buf, &buf_len);
-	ESP_ERROR_CHECK(err);
+	//ESP_ERROR_CHECK(err);
+	printf("after err ");
+	printf("after err %x \n", err);
 	if (err == 0) ESP_LOGI(TAG,"Parametr %s = %s",nvs_get_args.parName->sval[0], buf);
+	printf("after esplog %x \n", err);
 	nvs_close(handle);
-
+	printf("after nvsclose %x \n", err);
 
 	return 0;
 }
@@ -207,4 +293,6 @@ void initialize_nvs() {
 		register_nvsGetPar();
 		register_nvsSetIPar();
 		register_nvsGetIPar();
+		register_nvsGetFPar();
+		register_nvsSetFPar();
 }
