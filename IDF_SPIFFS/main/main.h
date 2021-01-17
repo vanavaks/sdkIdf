@@ -20,6 +20,15 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef   esp_err_t err1_t;
+#ifdef __cplusplus
+}
+#endif
+
 
 
 
