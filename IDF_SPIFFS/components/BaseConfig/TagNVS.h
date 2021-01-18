@@ -14,21 +14,21 @@
 #include "../../main/main.h"
 #include "Tag.h"
 
-
+#if 0
 #define ESP_ERR_PAR_BASE                0x4100                     /*!< Starting number of error codes */
 #define ESP_ERR_PAR_OK     				0
 #define ESP_ERR_PAR_ERR           		(ESP_ERR_PAR_BASE + 0x01)   /*!< Requested resource not found */
 
 
 
-enum PAR_openMode{
+/*enum PAR_openMode{
 	openOnce,
 	openEveryTime,
-};
+};*/
 
 #define TAGNVS_OPEN_MODE openOnce
 
-class TagNVS: public Tag{ //
+class TagNVS{ //
 public:
 
 	TagNVS(const tagProp_t* tagProp, uint32_t v);// : Tag(tagProp, v);
@@ -41,7 +41,7 @@ private:
 	static nvs_handle handle;
 	const char* nsDef = "par";
 	err1_t save();
-	err1_t read() override;
+	//err1_t read() override;
 	err1_t setPar(char* key);
 	err1_t getPar(char* key);
 	err1_t commitPar();
@@ -50,7 +50,7 @@ private:
 	void open(){if(TAGNVS_OPEN_MODE == openEveryTime)ESP_ERROR_CHECK(nvs_open(nsDef, NVS_READWRITE, &handle));};
 	void close(){if(TAGNVS_OPEN_MODE == openEveryTime) nvs_close(handle);};
 };
-
+#endif
 #endif /* COMPONENTS_BASECONFIG_TAGNVS_HPP_ */
 
 

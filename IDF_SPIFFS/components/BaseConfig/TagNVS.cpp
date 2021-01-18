@@ -8,7 +8,7 @@
 #include <TagNVS.h>
 
 struct tagProp_t;
-
+#if 0
 nvs_handle TagNVS::handle = 0;
 
 
@@ -34,14 +34,14 @@ err1_t TagNVS::save() {
 
 err1_t TagNVS::read() {
 	open();
-	ESP_ERROR_CHECK(nvs_set_str(handle, this->prop->name, this->prop->val.asstr));
+	//ESP_ERROR_CHECK(nvs_set_str(handle, this->prop->name, this->prop->val.asstr));
 	close();
 	return ESP_ERR_PAR_OK;
 }
 
 TagNVS::TagNVS(const tagProp_t* tagProp) {
 	Tag::Tag(tagProp);
-	//saveble option reading value
+	saveble option reading value
 	if(tagProp->saveble)
 		ESP_ERROR_CHECK(read());
 }
@@ -194,4 +194,4 @@ err1_t TagNVS::setStr(char* key, char* val) {
 	return 0;
 }*/
 
-
+#endif

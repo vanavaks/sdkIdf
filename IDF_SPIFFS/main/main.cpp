@@ -24,16 +24,18 @@
 
 
 extern "C" void app_main(void) {
-	initialize_nvs();
+	Tag::begin();		//nitialize_nvs();
+
 	ESP_ERROR_CHECK(esp_netif_init());
 	ESP_ERROR_CHECK(esp_event_loop_create_default());
-	ESP_ERROR_CHECK(wifi_connect());
 
-#define Pstr(_name, _cat, _savebl, _def) {.name = (_name), .category = (_cat), .type = TAG_STR, .saveble = (_savebl), .val = { .asstr = (_def) }}
 
-	const char* C_ssid= "ssid";
+#define Pstr(_name, _cat, _savebl, _def) {.name = (_name), .category = (_cat), .type = TAG_STR, .saveble = (_savebl), .val = { .asstr = (char*)(_def) }}
+
+
+	const char* C_ssid= "test";
 	const char* C_cat = "main";
-
+	//const char*
 	struct st{
 		union{
 			uint8_t u8;
@@ -44,14 +46,32 @@ extern "C" void app_main(void) {
 	const st stt = {.u8 = 25};
 	ESP_LOGI("main", "starting console task %d", stt.u8);
 
-	const val_t vt = {.asstr = "mode"};
-	const tagProp_t tpt = {"vanavaks","WIFI",TAG_STR,SAVEBLE,vt};
+	//const val_t vt = {.asstr = "mode"};
+	//const tagProp_t tpt = {"vanavaks","WIFI",TAG_STR,SAVEBLE,vt};
 
-	const tagProp_t tpt1 = {.name = C_ssid, .category = C_cat, .type = TAG_STR, .saveble = SAVEBLE, .val = {.asstr = "asdf"}};
+	const tagProp_t tpt1 = {.name = C_ssid, .category = C_cat, .type = TAG_STR, .saveble = SAVEBLE, .val = {.asstr = (char *)"asdf"}};
 	const tagProp_t tpt2 = Pstr("ssid","WIFI",SAVEBLE,"vanavaks");
+	const tagProp_t tagI = {.name = "IntTag", .category = C_cat, .type = TAG_UI32, .saveble = SAVEBLE, .val = {.asi32 = 6513}};
+	Tag tag2(&tpt2); // = new TagNVS(tpt2);
+	Tag tag3(&tpt1);
+	Tag tagInt(&tagI);
 
-	TagNVS tag2(&tpt2); // = new TagNVS(tpt2);
-	TagNVS tag3(&tpt1);
+	Tag::printAll();
+
+	tag2.set("Tag2");
+	tag3.set("Tag3");
+	tagInt.set(564835);
+
+	Tag::printAll();
+	char* rv;
+	uint32_t int32;
+
+	rv = tag2.getStr();
+	int32 = tagInt.getUI32();
+	ESP_LOGI("main", "tag2=%s", rv);
+	ESP_LOGI("main", "tagInt=%d", int32);
+
+	ESP_ERROR_CHECK(wifi_connect());
 /*
 const tagProp_t param[] = {
 		Pstr(C_ssid, C_cat, TAG_STR, true, C_ssid)
