@@ -10,9 +10,17 @@
 #include <Tag.h>
 #include "nvs_flash.h"
 
+#define TAG_DEBUG
+#ifdef TAG_DEBUG
+#define TAG_LOGD(tag, format, ...) ESP_LOGI(tag, format, ##__VA_ARGS__)
+#else
+#define TAG_LOGD(tag, format, ...) ESP_LOGD(tag, format, ##__VA_ARGS__)
+#endif
+
 uint16_t Tag::indHead = 0;
 nvs_handle Tag::handle = 0;
 uint32_t Tag::saveCnt = 0;
+bool Tag::isInit;
 Tag* Tag::arr[CONFIG_TAG_ARR_SIZE];
 
 const char* tag = "Tag";
@@ -21,11 +29,28 @@ const char* nsDef = "par";
 Tag::Tag() {}
 Tag::~Tag() {}
 
+void Tag::begin(){
+	if(isInit) return;
+	initNVS();
+	arrInit();
+	isInit = true;
+}
+
+bool Tag::chackName(const char* name){
+	for(int i=0;i<indHead;i++){
+		if (!strcmp(name,arr[i]->prop->name)) return false;
+	}
+	return true;
+}
 
 void Tag::init(const tagProp_t* tagProp){
 	err1_t err;
+		//check initialisation of Tag class
+	if(!isInit) {Tag::begin();}
 		//check properties pointer
 	if(tagProp == NULL){err = ESP_ERR_TAG_NULL_POINTER; goto err;}
+		//chack name
+	if(!chackName(tagProp->name)){err = ESP_ERR_TAG_NAME; goto err;}
 		//reg Tag
 	err = Tag::arrAdd(this);
 		//reg properties
@@ -169,7 +194,9 @@ err1_t Tag::get(char* key, uint32_t* val) {
 //==================================== NVS ==============================================//
 
 void Tag::initNVS() {
+
 	esp_err_t err = nvs_flash_init();
+	ESP_LOGI(tag, "Nvs_flash_init starting");
 	if (err == ESP_ERR_NVS_NO_FREE_PAGES) {
 		ESP_LOGW(tag, "nvs_flash_init failed (0x%x), erasing partition and retrying", err);
 		ESP_ERROR_CHECK(nvs_flash_erase());
@@ -249,7 +276,7 @@ void Tag::read() {
 		case ESP_OK:
 			break;
 		default:
-			ESP_LOGW(tag, "Reading parameter %s, err= %d", prop->name, err);
+			ESP_LOGW(tag, "Reading parameter %s, err= %x", prop->name, err);
 		;
 	}
 	close();
@@ -286,13 +313,41 @@ void Tag::Print(){
 	else if(prop->type == TAG_UI8) printf("type - ui8, val = %d, def val = %d, ", value.asi8, prop->val.asi8);
 	else if(prop->type == TAG_FLOAT) printf("type - float, val = %f, def val = %f, ", value.asfloat, prop->val.asfloat);
 	else if(prop->type == TAG_BOOL) printf("type - bool, val = %d, def val = %d, ", value.asbool, prop->val.asbool);
-	printf("arr index - %d \r\n", index);
+	printf("arr index - %d, size - %d \r\n", index, this->size());
+}
+
+void Tag::PrintAdr(){
+	void* v1 = this;
+	void* v2 = (void*)this->prop;
+	ESP_LOGI(tag,"Tag adr: '%x', prop adr; %x",(uint)v1, (uint)v2);
+	//void* v3,v4,v5;
+	/*v1 = (void*)(this->prop.category);
+	v2 = (void*)(this->prop.name);
+	v3 = (void*)(this->prop.saveble);
+	v5 = (void*)(this->prop.val)
+	ESP_LOGI(tag,"name adr: '%x', cat adr: '%x', type adr: '%x', savebl adr: '%x', savebl val: '%x', val adr: %x",(uint)v1, (uint)v2, (uint)v3, (uint)(this->prop->saveble), (uint)v5);
+	*/
 }
 
 void Tag::printAll(){
 	for(int i=0; i<indHead; i++){
 		arr[i]->Print();
 	}
+}
+
+size_t Tag::size() {
+	uint16_t s=0;
+	if(prop->type == TAG_STR){
+		char* str = value.asstr;
+		for(s=0; *str != 0;s++){str++;}
+		return s;
+	}else if(prop->type == TAG_UI32){return 4;
+	}else if(prop->type == TAG_BOOL){return 1;
+	}else if(prop->type == TAG_UI8){return 1;
+	}else if(prop->type == TAG_I32){return 4;
+	}else if(prop->type == TAG_FLOAT){return 4;
+	}else {ESP_ERROR_CHECK(ESP_ERR_TYPE);}
+	return sizeof value;
 }
 
 /*void Tag::getByCategory(Tag* t[],size_t size) {
@@ -331,6 +386,38 @@ err1_t Tag::saveVal(val_t v){
 	return ESP_ERR_TAG_OK;
 }
 
+Tag* Tag::getNextByCategory(uint16_t* index, const char* cat) {
+	TAG_LOGD(tag,"Get next tag by cat - '%s', index - %d ", cat, *index);
+	if (cat == NULL){
+		ESP_LOGE(tag,"Category have NULL pointer");
+		return NULL;
+	}
+	if (*index >= CONFIG_TAG_ARR_SIZE) {
+		TAG_LOGD(tag,"Index to high - %d ", *index);
+		return NULL;
+	}
+
+	for (int i = *index; i < indHead; i++) {
+		TAG_LOGD(tag," tag ind - %d, head - %d", i, indHead);
+
+		if(arr[i] != NULL) {
+			TAG_LOGD(tag," arr[%d] not null \r\n", i);
+
+			char ar[20]{0};
+			strcpy(ar, arr[i]->prop->category);
+			int t = strcmp(ar, cat);
+			TAG_LOGD(tag," str cmp result - %d", t);
+
+			if (t == 0) {
+				TAG_LOGD(tag,"Tag %d is equal", i);
+				*index = i;
+				return Tag::arr[i];
+			}
+			else{TAG_LOGD(tag,"Tag not equal -> chack next");}
+		}else{ESP_LOGE(tag," tag ind - %d have NULL pointer", i);}
+	}
+	return NULL;
+}
 
 /*err1_t Tag::get(uint32_t* val) {
 	err1_t err = ESP_OK;

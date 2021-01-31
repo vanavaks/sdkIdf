@@ -21,9 +21,11 @@
 
 //extern uint8_t sntp_connected;
 
-
-
+const char* tag1 = "Main";
+Tag* tag2;
+Tag*	 tag3;
 extern "C" void app_main(void) {
+	ESP_LOGI(tag1, "Nvs_flash_init starting from main");
 	Tag::begin();		//nitialize_nvs();
 
 	ESP_ERROR_CHECK(esp_netif_init());
@@ -34,7 +36,7 @@ extern "C" void app_main(void) {
 
 
 	const char* C_ssid= "test";
-	const char* C_cat = "main";
+	const char* C_cat = "Net";
 	//const char*
 	struct st{
 		union{
@@ -42,36 +44,40 @@ extern "C" void app_main(void) {
 			uint32_t u32;
 		};
 	};
+	const tagProp_t tpt2 = Pstr("hren","Main",SAVEBLE,"jaba");
+	tag2 = new Tag(&tpt2);
+
 
 	const st stt = {.u8 = 25};
 	ESP_LOGI("main", "starting console task %d", stt.u8);
 
 	//const val_t vt = {.asstr = "mode"};
 	//const tagProp_t tpt = {"vanavaks","WIFI",TAG_STR,SAVEBLE,vt};
-
+#if 0
 	const tagProp_t tpt1 = {.name = C_ssid, .category = C_cat, .type = TAG_STR, .saveble = SAVEBLE, .val = {.asstr = (char *)"asdf"}};
-	const tagProp_t tpt2 = Pstr("ssid","WIFI",SAVEBLE,"vanavaks");
-	const tagProp_t tagI = {.name = "IntTag", .category = C_cat, .type = TAG_UI32, .saveble = SAVEBLE, .val = {.asi32 = 6513}};
-	Tag tag2(&tpt2); // = new TagNVS(tpt2);
-	Tag tag3(&tpt1);
-	Tag tagInt(&tagI);
+
+	 // = new TagNVS(tpt2);
+	 tag3 = new Tag(&tpt1);
+
+	//const tagProp_t tagI = {.name = "IntTag", .category = C_cat, .type = TAG_UI32, .saveble = SAVEBLE, .val = {.asi32 = 6513}};
+	//Tag tagInt(&tagI);
 
 	Tag::printAll();
 
-	tag2.set("Tag2");
-	tag3.set("Tag3");
-	tagInt.set(564835);
+	tag2->set("Tag2");
+	tag3->set("Tag3");
+	//tagInt.set(564835);
 
 	Tag::printAll();
 	char* rv;
 	uint32_t int32;
 
-	rv = tag2.getStr();
-	int32 = tagInt.getUI32();
+	rv = tag2->getStr();
+	//int32 = tagInt.getUI32();
 	ESP_LOGI("main", "tag2=%s", rv);
-	ESP_LOGI("main", "tagInt=%d", int32);
-
-	ESP_ERROR_CHECK(wifi_connect());
+	//ESP_LOGI("main", "tagInt=%d", int32);
+#endif
+	ESP_ERROR_CHECK(wifi_begin());
 /*
 const tagProp_t param[] = {
 		Pstr(C_ssid, C_cat, TAG_STR, true, C_ssid)
@@ -110,10 +116,12 @@ const tagProp_t param12[] = {
 	//Tag* T1 = new TagNVS(param1);
 	//Tag* T2 = new TagNVS(param12);
 	//Tag* T3 = new TagNVS(param);
-	register_OtaUpdate();
-	sntp_start();
-	ESP_LOGI("main", "trying to starting console task");
-	while (sntp_getStat() == 0) {}
+
+
+	//-----------register_OtaUpdate();
+	//------------sntp_start();
+	//--------ESP_LOGI("main", "trying to starting console task");
+	//--------while (sntp_getStat() == 0) {}
 	ESP_LOGI("main", "starting console task");
 	http_startWebServer();
 	xTaskCreate(&cmd_task, "cmd_task", 8192, NULL, 5, NULL);

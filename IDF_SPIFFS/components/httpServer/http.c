@@ -5,12 +5,17 @@
  *      Author: Vanavaks
  */
 
-#include "main.h"
+#include <esp_err.h>
+#include <esp_event.h>
+#include <esp_event_base.h>
+#include <esp_log.h>
+#include <esp_wifi_types.h>
+#include <http.h>
+#include <stddef.h>
+#include <stdlib.h>
 #include <sys/param.h>
-
-#include "esp_event.h"
-#include <esp_http_server.h>
-
+#include <tcpip_adapter.h>
+#include "htmlHelper.h"
 static const char *TAG="HTTP";
 
 /* An HTTP GET handler */
@@ -77,8 +82,11 @@ esp_err_t hello_get_handler(httpd_req_t *req)
 
     /* Send response with custom headers and body set as the
      * string passed in user context*/
-    const char* resp_str = (const char*) req->user_ctx;
-    httpd_resp_send(req, resp_str, strlen(resp_str));
+    //const char* resp_str = (const char*) req->user_ctx;
+    //httpd_resp_send(req, getCtxt, strlen(getCtxt));
+    ESP_LOGI(TAG, "Sanding html page");
+    err_t err = sendHtml(req);
+    if (err != ESP_OK) return err;
 
     /* After sending the HTTP response the old HTTP request
      * headers are lost. Check if HTTP request headers can be read now. */
@@ -96,6 +104,29 @@ httpd_uri_t hello = {
      * context to demonstrate it's usage */
     .user_ctx  = "Hello World!"
 };
+
+
+/* An HTTP net GET handler */
+esp_err_t net_get_handler(httpd_req_t *req)
+{
+    ESP_LOGI(TAG, "Sanding net page");
+	err_t err = sendNetHtml(req);
+	if (err != ESP_OK) return err;
+	return ESP_OK;
+}
+
+httpd_uri_t net_config = {
+    .uri       = "/net",
+    .method    = HTTP_GET,
+    .handler   = net_get_handler,
+    /* Let's pass response string in user
+     * context to demonstrate it's usage */
+    .user_ctx  = NULL
+};
+
+
+
+
 
 /* An HTTP POST handler */
 esp_err_t echo_post_handler(httpd_req_t *req)
@@ -188,6 +219,7 @@ httpd_handle_t start_webserver(void)
         httpd_register_uri_handler(server, &hello);
         httpd_register_uri_handler(server, &echo);
         httpd_register_uri_handler(server, &ctrl);
+        httpd_register_uri_handler(server, &net_config);
         return server;
     }
 

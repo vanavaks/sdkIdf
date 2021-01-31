@@ -13,12 +13,16 @@
 #include <nvs.h>
 #include "../../main/main.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum PAR_openMode{
 	openOnce,
 	openEveryTime,
 };
 
-#define TAGNVS_OPEN_MODE openOnce
+//#define TAGNVS_OPEN_MODE openOnce
 #define TAGNVS_OPEN_MODE_EVERY
 
 #define CONFIG_TAG_ARR_SIZE 100
@@ -26,6 +30,9 @@ enum PAR_openMode{
 #error "Array size must be > 10"
 #endif
 
+
+#define TAG_VAL_STR_MAX_SIZE 			20
+#define TAG_VAL_STR_MAX_SIZE_STR 		"20"
 #define CHAR_BUFF_SIZE 20
 
 #define ESP_ERR_TAG_BASE                0x4200                     /*!< Starting number of error codes */
@@ -36,6 +43,7 @@ enum PAR_openMode{
 #define ESP_ERR_TYPE		 			(ESP_ERR_TAG_BASE + 0x04)
 #define ESP_INF_TAG_SAVE_DEF			(ESP_ERR_TAG_BASE + 0x05)
 #define ESP_ERR_TAG_SAVE_DEF			(ESP_ERR_TAG_BASE + 0x06)
+#define ESP_ERR_TAG_NAME				(ESP_ERR_TAG_BASE + 0x07)
 
 #define SAVE_NVS_DEF_VAL
 enum paramtype_t : uint8_t { TAG_BOOL, TAG_I8, TAG_UI8, TAG_I16, TAG_UI16, TAG_I32, TAG_UI32, TAG_FLOAT, TAG_CHAR, TAG_STR, TAG_PSWD };
@@ -115,48 +123,61 @@ public:
 	virtual err1_t commitPar();*/
 	static void initNVS();
 	//virtual void init(const tagProp_t* tagProp);
-	static void begin(){initNVS(); arrInit();}
+	static void begin();
 	static void printAll();
 	void Print();
+	void PrintAdr();
 
 	static uint16_t getTagNumb(){return indHead;}
 	static Tag* getByIndex(uint16_t i){if(i<indHead) return arr[i]; else return NULL;}
+	static Tag* getNextByCategory(uint16_t* index, const char* cat);
 
-	//void getByCategory(Tag* t[],size_t size);
+	size_t size();
+
+	const char* getName() {return this->prop->name;}
+	paramtype_t getType() {return this->prop->type;}
+	bool 		isSaveble() {return this->prop->saveble;}
+
 protected:
 	Tag();
-
+	const tagProp_t* prop;
 
 	err1_t saveVal(val_t v);
 	//void init(const tagProp_t* tagProp, paramtype_t tagType);
 	void init(const tagProp_t* tagProp);
 
 
-	const tagProp_t* prop;
-	int16_t index = -1;  //-1 - noinit
+
+
 	val_t value;
-	void open(){
+	int16_t index = -1;  //-1 - noinit
+	inline void open(){
 #ifdef TAGNVS_OPEN_MODE_EVERY
 		 ESP_ERROR_CHECK(nvs_open("par", NVS_READWRITE, &handle));
 #endif
-	}
+	};
 
-	void close(){
+	inline void close(){
 #ifdef TAGNVS_OPEN_MODE_EVERY
 		nvs_close(handle);
 #endif
-	}
-
+	};
 
 	static nvs_handle handle;
 	static uint16_t indHead;
 	static Tag* arr[CONFIG_TAG_ARR_SIZE];
 	static void arrInit();
 	static err1_t arrAdd(Tag* tag);
+	static bool chackName(const char* name);
 	static uint32_t saveCnt;
+	static bool isInit;
 	//static err1_t arrGet(uint16_t index, Tag* tag);
 
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* COMPONENTS_BASECONFIG_TAG_HPP_ */
 

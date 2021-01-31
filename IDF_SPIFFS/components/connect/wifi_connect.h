@@ -52,7 +52,7 @@ esp_err_t example_configure_stdin_stdout(void);
  * @brief Configure SSID and password
  */
 esp_err_t wifi_set_connection_info(const char *ssid, const char *passwd);
-
+esp_err_t wifi_begin();
 #ifdef __cplusplus
 }
 #endif

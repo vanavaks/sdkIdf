@@ -21,6 +21,8 @@
 #include "freertos/event_groups.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
+#include "Tag.h"
+
 
 #define GOT_IPV4_BIT BIT(0)
 #define GOT_IPV6_BIT BIT(1)
@@ -38,9 +40,31 @@
 
 static EventGroupHandle_t s_connect_event_group;
 static ip4_addr_t s_ip_addr;
+static bool wifi_defConfig = false;
 
+static wifi_config_t wifi_config = { 0 }; //must be local
+
+#if 0
 #define CONFIG_EXAMPLE_WIFI_SSID "vanavaks"
 #define CONFIG_EXAMPLE_WIFI_PASSWORD "programmer"
+#else
+#define CONFIG_EXAMPLE_WIFI_SSID		"asumdf"
+#define CONFIG_EXAMPLE_WIFI_PASSWORD 	"sipartsipart"
+#endif
+
+#define Pstr(_name, _cat, _savebl, _def) {.name = (_name), .category = (_cat), .type = TAG_STR, .saveble = (_savebl), .val = { .asstr = (char*)(_def) }}
+
+static const char * tag = "wifi";
+
+const tagProp_t prop_WIFI_ssid1 = Pstr("WIFI_ssid1","Net",SAVEBLE,"vanavaks");
+const tagProp_t prop_WIFI_ssid2 = Pstr("WIFI_ssid2","Net",SAVEBLE,"asumdf");
+const tagProp_t prop_WIFI_pass1 = Pstr("WIFI_pass_1","Net",SAVEBLE,"programmer");
+const tagProp_t prop_WIFI_pass2 = Pstr("WIFI_pass_2","Net",SAVEBLE,"sipartsipart");
+
+Tag* tag_WIFI_ssid1;
+Tag* tag_WIFI_ssid2;
+Tag* tag_WIFI_pass1;
+Tag* tag_WIFI_pass2;
 
 static char s_connection_name[32] = CONFIG_EXAMPLE_WIFI_SSID;
 static char s_connection_passwd[32] = CONFIG_EXAMPLE_WIFI_PASSWORD;
@@ -50,6 +74,26 @@ static ip6_addr_t s_ipv6_addr;
 #endif
 
 static const char *TAG = "example_connect";
+
+static void strInit(char* s, uint8_t len){
+	if(s == NULL) return;
+	for(int i = 0; i<len;i++){
+		*s = NULL;
+		s++;
+	}
+}
+
+static void wifi_start( Tag* ssid, Tag* pass){
+	strInit((char *)&wifi_config.sta.ssid, 32);
+	strInit((char *)&wifi_config.sta.password, 32);
+	strncpy((char *)&wifi_config.sta.ssid, ssid->getStr(), ssid->size());
+	strncpy((char *)&wifi_config.sta.password, pass->getStr(), pass->size());
+    ESP_LOGI(TAG, "Connecting to %s...", wifi_config.sta.ssid);
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_connect());
+}
 
 static void on_wifi_disconnect(void *arg, esp_event_base_t event_base,
                                int32_t event_id, void *event_data)
@@ -61,7 +105,17 @@ static void on_wifi_disconnect(void *arg, esp_event_base_t event_base,
         /*Switch to 802.11 bgn mode */
         esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N);
     }
-    ESP_ERROR_CHECK(esp_wifi_connect());
+
+    if (!wifi_defConfig){
+    	ESP_LOGI(tag,"Trying to connect with default  config: \n ssid -%s, pass - %s", wifi_config.sta.ssid, wifi_config.sta.password);
+		wifi_start(tag_WIFI_ssid1, tag_WIFI_pass1);
+		wifi_defConfig = true;
+    }else{
+		ESP_LOGI(tag,"Trying to connect with alternate config: \n ssid -%s, pass - %s", wifi_config.sta.ssid, wifi_config.sta.password);
+		wifi_start(tag_WIFI_ssid2, tag_WIFI_pass2);
+		wifi_defConfig = false;
+	}
+    //ESP_ERROR_CHECK(esp_wifi_connect());
 }
 
 #ifdef CONFIG_EXAMPLE_CONNECT_IPV6
@@ -98,6 +152,8 @@ static void on_got_ipv6(void *arg, esp_event_base_t event_base,
 
 #endif // CONFIG_EXAMPLE_CONNECT_IPV6
 
+
+
 static void start(void)
 {
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -111,16 +167,38 @@ static void start(void)
 #endif    
 
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    wifi_config_t wifi_config = { 0 };
-
+    //wifi_config_t wifi_config = { 0 };
+/*
     strncpy((char *)&wifi_config.sta.ssid, s_connection_name, 32);
     strncpy((char *)&wifi_config.sta.password, s_connection_passwd, 32);
+*/
+
+    /*char * ssid = tag_WIFI_ssid1->getStr();
+    char * pass = tag_WIFI_pass1->getStr();
+    ESP_LOGI(tag,"actual pass - %s, size - %d", pass, tag_WIFI_pass1->size());
+    ESP_LOGI(tag,"actual ssid -%s, size - %d", ssid, tag_WIFI_ssid1->size());
+
+    strncpy((char *)&wifi_config.sta.ssid, ssid, tag_WIFI_ssid1->size());
+    strncpy((char *)&wifi_config.sta.password, pass, tag_WIFI_pass1->size());*/
+
+
+	/*strInit((char *)&wifi_config.sta.ssid, 32);
+	strInit((char *)&wifi_config.sta.password, 32);
+	strncpy((char *)&wifi_config.sta.ssid, tag_WIFI_ssid1->getStr(), tag_WIFI_ssid1->size());
+	strncpy((char *)&wifi_config.sta.password, tag_WIFI_pass1->getStr(), tag_WIFI_pass1->size());
+	ESP_LOGI(tag,"Trying to connect with default  config: \n ssid -%s, pass - %s", wifi_config.sta.ssid, wifi_config.sta.password);
+	wifi_defConfig = true;
+
 
     ESP_LOGI(TAG, "Connecting to %s...", wifi_config.sta.ssid);
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_ERROR_CHECK(esp_wifi_connect());
+    ESP_ERROR_CHECK(esp_wifi_connect());*/
+
+    ESP_LOGI(tag,"Trying to connect with default  config: \n ssid -%s, pass - %s", wifi_config.sta.ssid, wifi_config.sta.password);
+    wifi_start(tag_WIFI_ssid1, tag_WIFI_pass1);
+    wifi_defConfig = true;
 }
 
 static void stop(void)
@@ -155,6 +233,8 @@ esp_err_t wifi_connect(void)
 #ifdef CONFIG_EXAMPLE_CONNECT_IPV6
     ESP_LOGI(TAG, "IPv6 address: " IPV6STR, IPV62STR(s_ipv6_addr));
 #endif
+
+
     return ESP_OK;
 }
 
@@ -177,4 +257,15 @@ esp_err_t wifi_set_connection_info(const char *ssid, const char *passwd)
     strncpy(s_connection_passwd, passwd, sizeof(s_connection_passwd));
 
     return ESP_OK;
+}
+
+esp_err_t wifi_begin(){
+	tag_WIFI_ssid1 = new Tag(&prop_WIFI_ssid1);
+	tag_WIFI_ssid2 = new Tag(&prop_WIFI_ssid2);
+	tag_WIFI_pass1 = new Tag(&prop_WIFI_pass1);
+	tag_WIFI_pass2 = new Tag(&prop_WIFI_pass2);
+
+	Tag::printAll();
+
+	return wifi_connect();
 }
