@@ -89,8 +89,12 @@ const char* html_context = "<h2>Some information </h2>  <p>As part of the esp-op
 		to contain unattributed open source code: </p>";
 
 const char* html_net_context = "<h2>Network information </h2>  <p>Here will been network parameters</p>";
+const char* html_form_post = "<form action=\"net\" method=\"POST\">";
+const char* html_but_save = "<input type=\"submit\" class = \"buttonFlp\"  value=\"Сохранить\"></form>";
+
 
 void http_createNetParsList(char* buff, char* category);
+
 void http_createParsList(char* buff,const char* category);
 err_t sendStyle(httpd_req_t *req){
 	esp_err_t err;
@@ -143,13 +147,13 @@ err_t sendNetHtml(httpd_req_t *req){
 
 	if((err = sendSideBar(req)) !=ESP_OK) return err;
 
-	//if((err = httpd_resp_send_chunk(req, html_net_context, strlen(html_net_context))) !=ESP_OK) return err;
+	if((err = httpd_resp_send_chunk(req, html_form_post, strlen(html_form_post))) !=ESP_OK) return err;
+
 	char buff[2048]{0}; //-------проверять размер буфера и увеличивать при необходимости
-	//initBuff(buff, buffSize);
 	strcat(buff, "<div><h2>Network information </h2></div>");
-	printf("Net Test");
 	http_createParsList(buff,"Net");
 	if((err = httpd_resp_send_chunk(req, buff, strlen(buff))) !=ESP_OK) return err;
+	if((err = httpd_resp_send_chunk(req, html_but_save, strlen(html_but_save))) !=ESP_OK) return err;
 
 	if((err = httpd_resp_send_chunk(req, html_footer, strlen(html_footer))) !=ESP_OK) return err;
 	if((err = httpd_resp_send_chunk(req, html_html_e, strlen(html_html_e))) !=ESP_OK) return err;
@@ -272,3 +276,6 @@ void http_createNetParsList(char* buff){
 	http_createParsList(buff,"Net");
 }
 
+void parsePostWebServerRequest(char* buff){		//838, 815
+
+}

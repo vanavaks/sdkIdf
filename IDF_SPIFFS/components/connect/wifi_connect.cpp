@@ -56,15 +56,18 @@ static wifi_config_t wifi_config = { 0 }; //must be local
 
 static const char * tag = "wifi";
 
+const char defSsid[] = "asumdf";
+const char defPass[] = "sipartsipart";
+
 const tagProp_t prop_WIFI_ssid1 = Pstr("WIFI_ssid1","Net",SAVEBLE,"vanavaks");
 const tagProp_t prop_WIFI_ssid2 = Pstr("WIFI_ssid2","Net",SAVEBLE,"asumdf");
 const tagProp_t prop_WIFI_pass1 = Pstr("WIFI_pass_1","Net",SAVEBLE,"programmer");
 const tagProp_t prop_WIFI_pass2 = Pstr("WIFI_pass_2","Net",SAVEBLE,"sipartsipart");
 
-Tag* tag_WIFI_ssid1;
-Tag* tag_WIFI_ssid2;
-Tag* tag_WIFI_pass1;
-Tag* tag_WIFI_pass2;
+Tag* tag_WIFI_ssid1{0};
+Tag* tag_WIFI_ssid2{0};
+Tag* tag_WIFI_pass1{0};
+Tag* tag_WIFI_pass2{0};
 
 static char s_connection_name[32] = CONFIG_EXAMPLE_WIFI_SSID;
 static char s_connection_passwd[32] = CONFIG_EXAMPLE_WIFI_PASSWORD;
@@ -86,14 +89,28 @@ static void strInit(char* s, uint8_t len){
 static void wifi_start( Tag* ssid, Tag* pass){
 	strInit((char *)&wifi_config.sta.ssid, 32);
 	strInit((char *)&wifi_config.sta.password, 32);
-	strncpy((char *)&wifi_config.sta.ssid, ssid->getStr(), ssid->size());
-	strncpy((char *)&wifi_config.sta.password, pass->getStr(), pass->size());
+
+	if(ssid != NULL){
+		strncpy((char *)&wifi_config.sta.ssid, ssid->getStr(), ssid->size());
+	}else{
+		size_t s1 = sizeof(defSsid);
+		strncpy((char *)&wifi_config.sta.ssid, defSsid, s1);
+	}
+
+	if(pass != NULL){
+			strncpy((char *)&wifi_config.sta.password, pass->getStr(), pass->size());
+	}else{
+		size_t s2 = sizeof(defPass);
+		strncpy((char *)&wifi_config.sta.password, defPass, s2);
+	}
+
     ESP_LOGI(TAG, "Connecting to %s...", wifi_config.sta.ssid);
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(esp_wifi_connect());
 }
+
 
 static void on_wifi_disconnect(void *arg, esp_event_base_t event_base,
                                int32_t event_id, void *event_data)

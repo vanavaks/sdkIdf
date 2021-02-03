@@ -10,9 +10,11 @@
 #include <Tag.h>
 #include "nvs_flash.h"
 
+const char* tag = "Tag";
+
 #define TAG_DEBUG
 #ifdef TAG_DEBUG
-#define TAG_LOGD(tag, format, ...) ESP_LOGI(tag, format, ##__VA_ARGS__)
+#define TAG_LOGD(format, ...) ESP_LOGI(tag, format, ##__VA_ARGS__)
 #else
 #define TAG_LOGD(tag, format, ...) ESP_LOGD(tag, format, ##__VA_ARGS__)
 #endif
@@ -23,7 +25,7 @@ uint32_t Tag::saveCnt = 0;
 bool Tag::isInit;
 Tag* Tag::arr[CONFIG_TAG_ARR_SIZE];
 
-const char* tag = "Tag";
+
 const char* nsDef = "par";
 
 Tag::Tag() {}
@@ -34,6 +36,55 @@ void Tag::begin(){
 	initNVS();
 	arrInit();
 	isInit = true;
+}
+
+Tag* Tag::findTag(const char* key){
+	for(int i=0;i<indHead;i++){
+		if (!strcmp(key,arr[i]->prop->name)) return arr[i];
+	}
+	return NULL;
+}
+
+err1_t Tag::set(const char* key, const char* value) {
+	Tag* tg;
+	ESP_LOGI(tag, "Set tag: name - %s, val - %s", key, value);
+	if((tg = findTag(key)) == NULL) return ESP_ERR_TAG_NAME;
+
+	if(tg->prop->type == TAG_STR){
+		TAG_LOGD("tag is STR, ind = %d", tg->index);
+		tg->set(value, strlen(value + 1));
+	}
+	else if(tg->prop->type == TAG_UI32){
+		uint32_t v = atol(key);
+		TAG_LOGD("tag is ui32, val = %d", v);
+		tg->value.asui32 = tg->set(v);
+	}
+	else if(tg->prop->type == TAG_I32){
+		int32_t v = atol(key);
+		TAG_LOGD("tag is i32, val = %d", v);
+		tg->value.asi32 = tg->set(v);
+	}
+	else if(tg->prop->type == TAG_UI8){
+		uint8_t v = atoi(key);
+		TAG_LOGD("tag is ui8, val = %d", v);
+		tg->value.asui8 = tg->set(v);
+	}
+	else if(tg->prop->type == TAG_BOOL){	/* WE MUCT CHACK TRUE VALUE AND FAULSE VALUE */
+		TAG_LOGD("tag is bool, val = '%s', bool true string is '%s", value, TAG_TRUE_STR);
+		if(!strcmp(value, TAG_TRUE_STR)){	/* value is true */
+			tg->value.asbool = true;
+		}else{
+			tg->value.asbool = false;
+		}
+	}
+	else if(tg->prop->type == TAG_FLOAT){
+		float v = atof(value);
+		TAG_LOGD("tag is float, %f", v);
+		tg->value.asfloat = tg->set(v);
+	}else{
+		ESP_LOGW(tag, "Unknown tag type - '%d'", tg->prop->type);
+	}
+	return ESP_ERR_TYPE;
 }
 
 bool Tag::chackName(const char* name){
@@ -180,9 +231,13 @@ err1_t Tag::set(float val) {
 }
 
 
-err1_t Tag::set(char* val) {
+err1_t Tag::set(const char* val, size_t size) {
 	if(this->prop->type != TAG_STR) {return ESP_ERR_TYPE;}
-	value.asstr = val;
+
+	if(value.asstr != NULL) {delete [] this->value.asstr;}			/* deleting of old array */
+	this->value.asstr = new char[size+1];							/* creating of new array */
+	strcpy(this->value.asstr, val);
+
 	if(prop->saveble) save();
 	return ESP_ERR_TAG_OK;
 }
@@ -286,7 +341,7 @@ void Tag::save() {
 	open();
 	err1_t err = ESP_OK;
 	ESP_LOGI(tag, "Trying to save parameter %s",prop->name);
-	saveCnt++;
+	saveCnt++;			//???????????
 	if(prop->type == TAG_STR){
 		err = nvs_set_str(handle, prop->name, value.asstr);
 	}else if(prop->type == TAG_UI32){
@@ -387,33 +442,33 @@ err1_t Tag::saveVal(val_t v){
 }
 
 Tag* Tag::getNextByCategory(uint16_t* index, const char* cat) {
-	TAG_LOGD(tag,"Get next tag by cat - '%s', index - %d ", cat, *index);
+	TAG_LOGD("Get next tag by cat - '%s', index - %d ", cat, *index);
 	if (cat == NULL){
 		ESP_LOGE(tag,"Category have NULL pointer");
 		return NULL;
 	}
 	if (*index >= CONFIG_TAG_ARR_SIZE) {
-		TAG_LOGD(tag,"Index to high - %d ", *index);
+		TAG_LOGD("Index to high - %d ", *index);
 		return NULL;
 	}
 
 	for (int i = *index; i < indHead; i++) {
-		TAG_LOGD(tag," tag ind - %d, head - %d", i, indHead);
+		TAG_LOGD(" tag ind - %d, head - %d", i, indHead);
 
 		if(arr[i] != NULL) {
-			TAG_LOGD(tag," arr[%d] not null \r\n", i);
+			TAG_LOGD(" arr[%d] not null \r\n", i);
 
 			char ar[20]{0};
 			strcpy(ar, arr[i]->prop->category);
 			int t = strcmp(ar, cat);
-			TAG_LOGD(tag," str cmp result - %d", t);
+			TAG_LOGD(" str cmp result - %d", t);
 
 			if (t == 0) {
 				TAG_LOGD(tag,"Tag %d is equal", i);
 				*index = i;
 				return Tag::arr[i];
 			}
-			else{TAG_LOGD(tag,"Tag not equal -> chack next");}
+			else{TAG_LOGD("Tag not equal -> chack next");}
 		}else{ESP_LOGE(tag," tag ind - %d have NULL pointer", i);}
 	}
 	return NULL;

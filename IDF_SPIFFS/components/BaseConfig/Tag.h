@@ -24,6 +24,8 @@ enum PAR_openMode{
 
 //#define TAGNVS_OPEN_MODE openOnce
 #define TAGNVS_OPEN_MODE_EVERY
+#define TAG_TRUE_STR 			"on"
+#define TAG_FALSE_STR			"off"
 
 #define CONFIG_TAG_ARR_SIZE 100
 #if (CONFIG_TAG_ARR_SIZE < 10)
@@ -98,8 +100,9 @@ public:
 	static err1_t get(char* key, uint32_t* val);
 	uint32_t getUI32();
 
-	err1_t set(char* val);		//установка значени€ с проверкой типа
-	static err1_t set(char* key, char* val); //установка значени€ с проверкой типа по ключу, не име€ екземпл€ра тега
+	err1_t set(const char* val, size_t size);		/* сохранение созданием новой строки в куче c удалением из кучи предыдущей */
+	err1_t setNew(char* val);
+	//static err1_t set(const char* key, const char* val){return 0;}; //установка значени€ с проверкой типа по ключу, не име€ екземпл€ра тега
 
 	//err1_t get(char** val);
 	static err1_t get(char* key, char* val);
@@ -131,7 +134,7 @@ public:
 	static uint16_t getTagNumb(){return indHead;}
 	static Tag* getByIndex(uint16_t i){if(i<indHead) return arr[i]; else return NULL;}
 	static Tag* getNextByCategory(uint16_t* index, const char* cat);
-
+	static err1_t set(const char* key, const char* value);
 	size_t size();
 
 	const char* getName() {return this->prop->name;}
@@ -162,7 +165,7 @@ protected:
 		nvs_close(handle);
 #endif
 	};
-
+	static Tag* findTag(const char* key);
 	static nvs_handle handle;
 	static uint16_t indHead;
 	static Tag* arr[CONFIG_TAG_ARR_SIZE];

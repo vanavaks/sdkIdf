@@ -16,7 +16,71 @@
 #include <sys/param.h>
 #include <tcpip_adapter.h>
 #include "htmlHelper.h"
+#include "Tag.h"
+
+#define TAG_KEY_MAX_SIZE  20
+#define TAG_VAL_MAX_SIZE  20
+
+#define ESP_ERR_HTTP_POST_KEY_SIZE 0x01
+#define ESP_ERR_HTTP_POST_VAL_SIZE 0x02
+
 static const char *TAG="HTTP";
+
+bool isSymbol(char c){
+	if(c >= '0' && c <= '9') return true;
+	if(c >= 'A' && c <= 'Z') return true;
+	if(c >= 'a' && c <= 'z') return true;
+	if(c == '_' ) return true;
+	return false;
+}
+
+static void strInit(char* s, uint8_t len){
+	if(s == NULL) return;
+	for(int i = 0; i<len;i++){
+		*s = NULL;
+		s++;
+	}
+}
+
+err_t http_parsePostReq(const char* buff){
+
+	if(buff == NULL) return 1;
+	char key[TAG_KEY_MAX_SIZE] = {0};
+	char value[TAG_VAL_MAX_SIZE] = {0};
+	int keyInd = 0;
+	int valInd = 0;
+	bool keyValid = false;
+	size_t buffSize = strlen(buff);
+	char s;
+	
+	for(int i=0;i<buffSize;i++){
+
+		s = buff[i];
+
+		if(isSymbol(s)){							/* is symbol */
+			if(!keyValid){							/* key parsing */
+				if(keyInd >= TAG_KEY_MAX_SIZE) return ESP_ERR_HTTP_POST_KEY_SIZE;
+				key[keyInd++] = s;
+			}else{									/* value parsing*/
+				if(keyInd >= TAG_VAL_MAX_SIZE) return ESP_ERR_HTTP_POST_VAL_SIZE;
+				value[valInd++] = s;
+			}
+		}else if(s == '=' && keyInd > 0){			/* key is parsed -> start value parsing */
+			keyValid = true;
+		}else if(s == '&' || i >= buffSize){		/* first key-value pair parsed */
+			if(keyValid){							/* key can't be zero */
+				Tag::set(key,value);				
+			}										/* bad key */
+			keyValid = false;
+			keyInd = 0;
+			valInd = 0;
+			strInit(key, sizeof(key));
+			strInit(value, sizeof(value));			
+		}
+	}
+	return 0;
+}
+
 
 /* An HTTP GET handler */
 esp_err_t hello_get_handler(httpd_req_t *req)
@@ -28,7 +92,7 @@ esp_err_t hello_get_handler(httpd_req_t *req)
      * extra byte for null termination */
     buf_len = httpd_req_get_hdr_value_len(req, "Host") + 1;
     if (buf_len > 1) {
-        buf = malloc(buf_len);
+         buf = (char*)malloc(buf_len);
         /* Copy null terminated value string into buffer */
         if (httpd_req_get_hdr_value_str(req, "Host", buf, buf_len) == ESP_OK) {
             ESP_LOGI(TAG, "Found header => Host: %s", buf);
@@ -38,7 +102,7 @@ esp_err_t hello_get_handler(httpd_req_t *req)
 
     buf_len = httpd_req_get_hdr_value_len(req, "Test-Header-2") + 1;
     if (buf_len > 1) {
-        buf = malloc(buf_len);
+        buf = (char*)malloc(buf_len);
         if (httpd_req_get_hdr_value_str(req, "Test-Header-2", buf, buf_len) == ESP_OK) {
             ESP_LOGI(TAG, "Found header => Test-Header-2: %s", buf);
         }
@@ -47,7 +111,7 @@ esp_err_t hello_get_handler(httpd_req_t *req)
 
     buf_len = httpd_req_get_hdr_value_len(req, "Test-Header-1") + 1;
     if (buf_len > 1) {
-        buf = malloc(buf_len);
+        buf = (char*)malloc(buf_len);
         if (httpd_req_get_hdr_value_str(req, "Test-Header-1", buf, buf_len) == ESP_OK) {
             ESP_LOGI(TAG, "Found header => Test-Header-1: %s", buf);
         }
@@ -58,7 +122,7 @@ esp_err_t hello_get_handler(httpd_req_t *req)
      * extra byte for null termination */
     buf_len = httpd_req_get_url_query_len(req) + 1;
     if (buf_len > 1) {
-        buf = malloc(buf_len);
+        buf = (char*)malloc(buf_len);
         if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
             ESP_LOGI(TAG, "Found URL query => %s", buf);
             char param[32];
@@ -96,14 +160,7 @@ esp_err_t hello_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-httpd_uri_t hello = {
-    .uri       = "/hello",
-    .method    = HTTP_GET,
-    .handler   = hello_get_handler,
-    /* Let's pass response string in user
-     * context to demonstrate it's usage */
-    .user_ctx  = "Hello World!"
-};
+
 
 
 /* An HTTP net GET handler */
@@ -115,7 +172,17 @@ esp_err_t net_get_handler(httpd_req_t *req)
 	return ESP_OK;
 }
 
-httpd_uri_t net_config = {
+
+httpd_uri_t hello = {
+    .uri       = "/hello",
+    .method    = HTTP_GET,
+    .handler   = hello_get_handler,
+    /* Let's pass response string in user
+     * context to demonstrate it's usage */
+    .user_ctx  = (char*)"Hello World!"
+};
+
+httpd_uri_t net_configGet = {
     .uri       = "/net",
     .method    = HTTP_GET,
     .handler   = net_get_handler,
@@ -124,8 +191,51 @@ httpd_uri_t net_config = {
     .user_ctx  = NULL
 };
 
+/* An HTTP POST handler */
+esp_err_t net_post_handler(httpd_req_t *req)
+{
+    char buf[100];
+    int ret, remaining = req->content_len;
+
+    if (remaining > 0) {
+        /* Read the data for the request */
+        if ((ret = httpd_req_recv(req, buf,
+                        MIN(remaining, sizeof(buf)))) <= 0) {
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+                /* Retry receiving if timeout occurred */
+            	;
+            }
+            return ESP_FAIL;
+        }
 
 
+
+        /* Log data received */
+        ESP_LOGI(TAG, "=========== RECEIVED DATA ==========");
+        ESP_LOGI(TAG, "%.*s", ret, buf);
+        ESP_LOGI(TAG, "====================================");
+        http_parsePostReq(buf);
+
+        /* Send back the same data */
+        ESP_LOGI(TAG, "Sanding net page to back");
+
+        //err_t err = sendHtml(req);
+		err_t err = sendNetHtml(req);
+		if (err != ESP_OK) return err;
+    }
+
+    return ESP_OK;
+}
+
+
+httpd_uri_t net_configPost = {
+    .uri       = "/net",
+    .method    = HTTP_POST,
+    .handler   = net_post_handler,
+    /* Let's pass response string in user
+     * context to demonstrate it's usage */
+    .user_ctx  = NULL
+};
 
 
 /* An HTTP POST handler */
@@ -219,7 +329,8 @@ httpd_handle_t start_webserver(void)
         httpd_register_uri_handler(server, &hello);
         httpd_register_uri_handler(server, &echo);
         httpd_register_uri_handler(server, &ctrl);
-        httpd_register_uri_handler(server, &net_config);
+        httpd_register_uri_handler(server, &net_configGet);
+        httpd_register_uri_handler(server, &net_configPost);
         return server;
     }
 
@@ -245,6 +356,7 @@ static void disconnect_handler(void* arg, esp_event_base_t event_base,
         *server = NULL;
     }
 }
+
 
 static void connect_handler(void* arg, esp_event_base_t event_base,
                             int32_t event_id, void* event_data)
