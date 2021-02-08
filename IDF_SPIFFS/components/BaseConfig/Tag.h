@@ -17,6 +17,11 @@
 extern "C" {
 #endif
 
+#define Pstr(_name, _cat, _savebl, _def) {.name = (_name), .category = (_cat), .type = TAG_STR, .saveble = (_savebl), .val = { .asstr = (char*)(_def) }}
+#define Pui32(_name, _cat, _savebl, _def) {.name = (_name), .category = (_cat), .type = TAG_UI32, .saveble = (_savebl), .val = { .asi32 = (int32_t)(_def) }}
+#define Pbool(_name, _cat, _savebl, _def) {.name = (_name), .category = (_cat), .type = TAG_BOOL, .saveble = (_savebl), .val = { .asbool = (bool)(_def) }}
+
+
 enum PAR_openMode{
 	openOnce,
 	openEveryTime,
@@ -51,6 +56,7 @@ enum PAR_openMode{
 enum paramtype_t : uint8_t { TAG_BOOL, TAG_I8, TAG_UI8, TAG_I16, TAG_UI16, TAG_I32, TAG_UI32, TAG_FLOAT, TAG_CHAR, TAG_STR, TAG_PSWD };
 #define SAVEBLE true
 
+
 struct val_t{
 	union {
 		bool asbool;
@@ -82,9 +88,6 @@ struct tagProp_t{
 class Tag {
 public:
 	Tag(const tagProp_t* tagProp);
-	/*Tag(const tagProp_t* tagProp, val_t v);
-	Tag(const tagProp_t* tagProp, char* v);
-	Tag(const tagProp_t* tagProp, uint32_t v);*/
 	Tag(const Tag& tag) : prop(tag.prop), value(tag.value){ESP_ERROR_CHECK(Tag::arrAdd(this));}
 	virtual ~Tag();
 
@@ -184,46 +187,3 @@ protected:
 
 #endif /* COMPONENTS_BASECONFIG_TAG_HPP_ */
 
-
-/*//static void registerTag(const tagProp_t* tagProp);
-	//static void registerTags(const tagProp_t* tagProp, uint16_t num);
-	//Tag(const tagProp_t* tagProp, val_t v);
-
-
-	err1_t setUI16(char* key, uint16_t val);
-	err1_t setUI32(char* key, uint32_t val);
-	err1_t setI8(char* key, int8_t val);
-	err1_t setI16(char* key, int16_t val);
-	err1_t setI32(char* key, int32_t val);
-	err1_t setStr(char* key, char* val);
-	err1_t setUI8(char* key, uint8_t val);
-	err1_t setUI16(char* key, uint16_t val);
-	err1_t setUI32(char* key, uint32_t val);
-	err1_t setI8(char* key, int8_t val);
-	err1_t setI16(char* key, int16_t val);
-	err1_t setI32(char* key, int32_t val);
-
-	err1_t getUI8(char* key, uint8_t* val);
-	err1_t getUI16(char* key, uint16_t* val);
-	err1_t getUI32(char* key, uint32_t* val);
-	err1_t getI8(char* key, int8_t* val);
-	err1_t getI16(char* key, int16_t* val);
-	err1_t getI32(char* key, int32_t* val);
-	err1_t getUI8(char* key, uint8_t* val);
-	err1_t getUI16(char* key, uint16_t* val);
-	err1_t getUI32(char* key, uint32_t* val);
-	err1_t getI8(char* key, int8_t* val);
-	err1_t getI16(char* key, int16_t* val);
-	err1_t getI32(char* key, int32_t* val);
-	err1_t getStr(char* key, char* val);*/
-
-/*
- * DRAM .data size:    1728 bytes
- DRAM .bss  size:   12560 bytes
-Used static DRAM:   14288 bytes (  84016 available, 14.5% used)
-Used static IRAM:   27430 bytes (  21722 available, 55.8% used)
-      Flash code:  436222 bytes
-    Flash rodata:   82108 bytes
-Total image size:~ 547488 bytes (.bin may be padded larger)
- *
- */

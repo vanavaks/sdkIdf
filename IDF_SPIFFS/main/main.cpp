@@ -15,7 +15,6 @@
 #include <sntp_app.h>
 #include <sys/_stdint.h>
 #include <Tag.h>
-#include <TagNVS.h>
 #include <wifi_connect.h>
 #include "main.h"
 
@@ -32,7 +31,7 @@ extern "C" void app_main(void) {
 	ESP_ERROR_CHECK(esp_event_loop_create_default());
 
 
-#define Pstr(_name, _cat, _savebl, _def) {.name = (_name), .category = (_cat), .type = TAG_STR, .saveble = (_savebl), .val = { .asstr = (char*)(_def) }}
+//#define Pstr(_name, _cat, _savebl, _def) {.name = (_name), .category = (_cat), .type = TAG_STR, .saveble = (_savebl), .val = { .asstr = (char*)(_def) }}
 
 
 	const char* C_ssid= "test";
@@ -119,7 +118,7 @@ const tagProp_t param12[] = {
 
 
 	//-----------register_OtaUpdate();
-	//------------sntp_start();
+	sntp_start();
 	//--------ESP_LOGI("main", "trying to starting console task");
 	//--------while (sntp_getStat() == 0) {}
 	ESP_LOGI("main", "starting console task");

@@ -10,13 +10,14 @@
 
 #pragma once
 
+void sntp_start();
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 //extern uint8_t sntp_connected;
 
-void sntp_start();
+
 uint8_t sntp_getStat();
 
 #ifdef __cplusplus

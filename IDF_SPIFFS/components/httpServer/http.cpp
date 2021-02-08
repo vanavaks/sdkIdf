@@ -27,10 +27,28 @@
 static const char *TAG="HTTP";
 
 bool isSymbol(char c){
+	if(c >= ' ') return true;
 	if(c >= '0' && c <= '9') return true;
 	if(c >= 'A' && c <= 'Z') return true;
 	if(c >= 'a' && c <= 'z') return true;
 	if(c == '_' ) return true;
+	return false;
+}
+
+bool isDigSymv(char c){
+	if(c >= '0' && c <= '9') return true;
+	return false;
+}
+
+bool isIpSymv(char c){
+	if(c >= '0' && c <= '9') return true;
+	if(c == '.') return true;
+	return false;
+}
+
+bool isUrlSymv(char c){
+	if(isSymbol(c))
+	if(c >= ' ') return true;
 	return false;
 }
 
@@ -41,6 +59,9 @@ static void strInit(char* s, uint8_t len){
 		s++;
 	}
 }
+
+
+
 
 err_t http_parsePostReq(const char* buff){
 
@@ -57,15 +78,7 @@ err_t http_parsePostReq(const char* buff){
 
 		s = buff[i];
 
-		if(isSymbol(s)){							/* is symbol */
-			if(!keyValid){							/* key parsing */
-				if(keyInd >= TAG_KEY_MAX_SIZE) return ESP_ERR_HTTP_POST_KEY_SIZE;
-				key[keyInd++] = s;
-			}else{									/* value parsing*/
-				if(keyInd >= TAG_VAL_MAX_SIZE) return ESP_ERR_HTTP_POST_VAL_SIZE;
-				value[valInd++] = s;
-			}
-		}else if(s == '=' && keyInd > 0){			/* key is parsed -> start value parsing */
+		if(s == '=' && keyInd > 0){			/* key is parsed -> start value parsing */
 			keyValid = true;
 		}else if(s == '&' || i >= buffSize){		/* first key-value pair parsed */
 			if(keyValid){							/* key can't be zero */
@@ -76,6 +89,14 @@ err_t http_parsePostReq(const char* buff){
 			valInd = 0;
 			strInit(key, sizeof(key));
 			strInit(value, sizeof(value));			
+		}else if(isSymbol(s)){							/* is symbol */
+			if(!keyValid){							/* key parsing */
+				if(keyInd >= TAG_KEY_MAX_SIZE) return ESP_ERR_HTTP_POST_KEY_SIZE;
+				key[keyInd++] = s;
+			}else{									/* value parsing*/
+				if(keyInd >= TAG_VAL_MAX_SIZE) return ESP_ERR_HTTP_POST_VAL_SIZE;
+				value[valInd++] = s;
+			}
 		}
 	}
 	return 0;
@@ -316,6 +337,72 @@ httpd_uri_t ctrl = {
     .user_ctx  = NULL
 };
 
+
+
+const http_category_t http_ntp = {
+		.title = "NTP configuration",
+		.url ="/ntp",
+		.menuTitle = "ntp",
+		.category = "ntp"
+};
+
+esp_err_t cfg_get_handler(httpd_req_t *req){
+	http_category_t* ctx = (http_category_t*)req->user_ctx;
+	ESP_LOGI(TAG, "Sanding %s page", ctx->category);
+	err_t err = sendConfigContent(req, ctx);
+	if (err != ESP_OK) return err;
+	return ESP_OK;
+}
+
+httpd_uri_t ntp_configGet = {
+    .uri       = http_ntp.url,
+	.method    = HTTP_GET,
+    .handler   = cfg_get_handler,
+    .user_ctx  = (http_category_t*)&http_ntp
+};
+
+esp_err_t cfg_post_handler(httpd_req_t *req){
+	char buf[100];
+	    int ret, remaining = req->content_len;
+
+	    if (remaining > 0) {
+	        /* Read the data for the request */
+	        if ((ret = httpd_req_recv(req, buf,
+	                        MIN(remaining, sizeof(buf)))) <= 0) {
+	            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+	                /* Retry receiving if timeout occurred */
+	            	;
+	            }
+	            return ESP_FAIL;
+	        }
+
+
+
+	        /* Log data received */
+	        ESP_LOGI(TAG, "=========== RECEIVED DATA ==========");
+	        ESP_LOGI(TAG, "%.*s", ret, buf);
+	        ESP_LOGI(TAG, "====================================");
+	        http_parsePostReq(buf);
+
+	        /* Send back the same data */
+	        http_category_t* ctx = (http_category_t*)req->user_ctx;
+	        ESP_LOGI(TAG, "Sanding %s page to back",ctx->category);
+
+	        //err_t err = sendHtml(req);
+			err_t err = sendConfigContent(req, ctx);
+			if (err != ESP_OK) return err;
+	    }
+
+	    return ESP_OK;
+}
+
+httpd_uri_t ntp_configPost = {
+    .uri       = http_ntp.url,
+    .method    = HTTP_POST,
+    .handler   = cfg_post_handler,
+    .user_ctx  = (http_category_t*)&http_ntp
+};
+
 httpd_handle_t start_webserver(void)
 {
     httpd_handle_t server = NULL;
@@ -331,6 +418,8 @@ httpd_handle_t start_webserver(void)
         httpd_register_uri_handler(server, &ctrl);
         httpd_register_uri_handler(server, &net_configGet);
         httpd_register_uri_handler(server, &net_configPost);
+        httpd_register_uri_handler(server, &ntp_configGet);
+        httpd_register_uri_handler(server, &ntp_configPost);
         return server;
     }
 

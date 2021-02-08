@@ -52,7 +52,7 @@ static wifi_config_t wifi_config = { 0 }; //must be local
 #define CONFIG_EXAMPLE_WIFI_PASSWORD 	"sipartsipart"
 #endif
 
-#define Pstr(_name, _cat, _savebl, _def) {.name = (_name), .category = (_cat), .type = TAG_STR, .saveble = (_savebl), .val = { .asstr = (char*)(_def) }}
+//#define Pstr(_name, _cat, _savebl, _def) {.name = (_name), .category = (_cat), .type = TAG_STR, .saveble = (_savebl), .val = { .asstr = (char*)(_def) }}
 
 static const char * tag = "wifi";
 

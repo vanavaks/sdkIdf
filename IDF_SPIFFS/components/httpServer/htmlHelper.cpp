@@ -10,7 +10,7 @@
 #include <esp_http_server.h>
 #include "htmlHelper.h"
 #include "Tag.h"
-
+#include "http.h"
 #define TAG "html"
 
 #define HTML_DEBUG
@@ -77,7 +77,7 @@ const char* html_footer = "<div id=\"footer\">&copy;" HTML_FOOTER "</div>";
 const char* html_sidebar = "<div id=\"sidebar\">\
 							<p><a href=\"hello\">Start page</a></p>\
 							<p><a href=\"b_author.html\">Config</a></p>\
-							<p><a href=\"b_theme.html\">Statistics</a></p>\
+							<p><a href=\"ntp\">Ntp config</a></p>\
 							<p><a href=\"net\">Net config</a></p>\
 							<p><a href=\"b_last.html\">Info</a></p>\
 							</div>";
@@ -160,7 +160,54 @@ err_t sendNetHtml(httpd_req_t *req){
 	return ESP_OK;
 }
 
+err_t sendConfigContent(httpd_req_t *req, http_category_t* cat){ //char* title, const char* category, const char* postUrl){
+	esp_err_t err;
+	if((err = httpd_resp_send_chunk(req, html_html_b, strlen(html_html_b))) !=ESP_OK) return err;
+	if((err = sendStyle(req)) !=ESP_OK) return err;
+	if((err = httpd_resp_send_chunk(req, html_header, strlen(html_header))) !=ESP_OK) return err;
 
+	if((err = sendSideBar(req)) !=ESP_OK) return err;
+
+	char buff[2048]{0}; //-------проверять размер буфера и увеличивать при необходимости
+	strcat(buff, "<form action=\"");
+	strcat(buff, cat->url);
+	strcat(buff, "\" method=\"POST\"> <div><h2> ");
+	strcat(buff, cat->title);
+	strcat(buff, " </h2></div>");
+	http_createParsList(buff, cat->category);
+	if((err = httpd_resp_send_chunk(req, buff, strlen(buff))) !=ESP_OK) return err;
+	if((err = httpd_resp_send_chunk(req, html_but_save, strlen(html_but_save))) !=ESP_OK) return err;
+
+	if((err = httpd_resp_send_chunk(req, html_footer, strlen(html_footer))) !=ESP_OK) return err;
+	if((err = httpd_resp_send_chunk(req, html_html_e, strlen(html_html_e))) !=ESP_OK) return err;
+	return ESP_OK;
+}
+
+
+err_t sendNtpHtml(httpd_req_t *req){
+	esp_err_t err;
+	return ESP_OK;
+}
+
+void html_webVisElementHeader(char* buff, const char* style, const char* label){
+	strcat(buff,"<td>");
+	strcat(buff,label);
+	strcat(buff,"</td>");
+}
+
+char* html_webInputFieldElement(char* buff, const char* style, const char* label, const char* value, const char* name, const char* maxlength){	//1507
+	html_webVisElementHeader(buff, style,  label);
+	strcat(buff,"<td><input type=\"text\" name=\"");
+	strcat(buff,name);
+	strcat(buff,"\" value=\"");
+	strcat(buff,value);
+	strcat(buff,"\"  maxlength=\"");
+	strcat(buff,maxlength);
+	strcat(buff,"\" ></td>");
+	return buff;
+}
+
+#if 0
 
 void html_webVisElementHeader(char* buff, const char* style, const char* label){
 	strcat(buff,"<div");
@@ -171,6 +218,7 @@ void html_webVisElementHeader(char* buff, const char* style, const char* label){
 	}
 	strcat(buff,"> <p>");
 	strcat(buff,label);
+	strcat(buff,"   ");
 }
 
 char* html_webInputFieldElement(char* buff, const char* style, const char* label, const char* value, const char* name, const char* maxlength){	//1507
@@ -184,6 +232,7 @@ char* html_webInputFieldElement(char* buff, const char* style, const char* label
 	strcat(buff,"\" ></p></div>");
 	return buff;
 }
+#endif
 
 char* html_webCheckBoxElement(char* buff, char* style, char* label, char* value, char* name){
 	strcat(buff,"<div");
@@ -230,8 +279,9 @@ char* html_webCheckBoxElement(char* buff, char* style, char* label, char* value,
 char* html_webTextElement(char* buff, const char* style, const char* label, const char* value){
 	ESP_LOGI("html","webText element");
 	html_webVisElementHeader(buff, style,  label);
+	strcat(buff, "<td>");
 	strcat(buff, value);
-	strcat(buff, "</p></div>");
+	strcat(buff, "</td>");
 	return buff;
 }
 
@@ -243,31 +293,49 @@ void http_createParsList(char* buff,const char* category){
 	uint16_t tags = Tag::getTagNumb();
 
 	HTML_LOGD(TAG,"Creating tag list for %s category", category);
+	strcat(buff,"<table border=\"1\">");
 	for(uint16_t index = 0; index < tags; index++){
 		tag = Tag::getNextByCategory(&index, category);
 		if(tag == NULL) continue;
 		HTML_LOGD(TAG,"Tag %d isnt null", index);
+		strcat(buff,"<tr>");
 		if(tag->isSaveble()){								//so->is editable (input field)
 			HTML_LOGD("html","Tag saveble");
 			if(tag->getType() == TAG_STR){					//text input field
 				HTML_LOGD(TAG,"string inputField");
-				strcat(buff, "<div><p>");
+				//strcat(buff, "<div><p>");
 				html_webInputFieldElement(buff, "", tag->getName(), tag->getStr(), tag->getName(), TAG_VAL_STR_MAX_SIZE_STR);
-				strcat(buff,"</p></div>");
+				//strcat(buff,"</p></div>");
+			}else if(tag->getType() == TAG_UI32){
+				HTML_LOGD(TAG,"ui32 inputField");
+				//strcat(buff, "<div><p>");
+				char b[15]{0};
+				itoa(tag->getUI32(),b,10);
+				HTML_LOGD(TAG,"мфдгу -'%s'",b);
+				html_webInputFieldElement(buff, "", tag->getName(), b, tag->getName(), TAG_VAL_STR_MAX_SIZE_STR);
+				//strcat(buff,"</p></div>");
 			}else{
 				ESP_LOGW(TAG,"Unhandled tag type %d", tag->getType());
 			}
 		}
 		else{	//text
 			if(tag->getType() == TAG_STR){	//text field
-				strcat(buff, "<div><p>");
+				//strcat(buff, "<div><p>");
 				html_webTextElement(buff, "", tag->getName(), tag->getStr());
-				strcat(buff,"</p></div>");
+				//strcat(buff,"</p></div>");
+			}else if(tag->getType() == TAG_UI32){
+				//strcat(buff, "<div><p>");
+				char b[15]{0};
+				itoa(tag->getUI32(),b,10);
+				html_webTextElement(buff, "", tag->getName(), b);
+				//strcat(buff,"</p></div>");
 			}else{
 				ESP_LOGW(TAG,"Unhandled tag type %d", tag->getType());
 			}
 		}
+		strcat(buff,"</tr>");
 	}
+	strcat(buff,"</table>");
 }
 
 void http_createNetParsList(char* buff){

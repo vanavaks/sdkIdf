@@ -19,6 +19,9 @@ const char* tag = "Tag";
 #define TAG_LOGD(tag, format, ...) ESP_LOGD(tag, format, ##__VA_ARGS__)
 #endif
 
+
+char defString[] = " ";
+
 uint16_t Tag::indHead = 0;
 nvs_handle Tag::handle = 0;
 uint32_t Tag::saveCnt = 0;
@@ -55,19 +58,22 @@ err1_t Tag::set(const char* key, const char* value) {
 		tg->set(value, strlen(value + 1));
 	}
 	else if(tg->prop->type == TAG_UI32){
-		uint32_t v = atol(key);
+		uint32_t v = atol(value);
 		TAG_LOGD("tag is ui32, val = %d", v);
-		tg->value.asui32 = tg->set(v);
+		tg->set(v);
+		tg->value.asui32 = tg->getUI32();
 	}
 	else if(tg->prop->type == TAG_I32){
-		int32_t v = atol(key);
+		int32_t v = atol(value);
 		TAG_LOGD("tag is i32, val = %d", v);
-		tg->value.asi32 = tg->set(v);
+		tg->set(v);
+		tg->value.asi32 = tg->getI32();
 	}
 	else if(tg->prop->type == TAG_UI8){
-		uint8_t v = atoi(key);
+		uint8_t v = atoi(value);
 		TAG_LOGD("tag is ui8, val = %d", v);
-		tg->value.asui8 = tg->set(v);
+		tg->set(v);
+		tg->value.asui8 = tg->getUI8();
 	}
 	else if(tg->prop->type == TAG_BOOL){	/* WE MUCT CHACK TRUE VALUE AND FAULSE VALUE */
 		TAG_LOGD("tag is bool, val = '%s', bool true string is '%s", value, TAG_TRUE_STR);
@@ -119,7 +125,11 @@ Tag::Tag(const tagProp_t* tagProp) {
 	if(prop->saveble){ read(); }
 	else{
 		if(prop->type == TAG_STR){
-			value.asstr = tagProp->val.asstr;
+			if(tagProp->val.asstr == NULL){
+				value.asstr = defString;
+			}else{
+				value.asstr = tagProp->val.asstr;
+			}
 		}
 		else if(prop->type == TAG_UI32){
 			value.asui32 = tagProp->val.asui32;
@@ -154,11 +164,18 @@ err1_t Tag::set(uint32_t val) {
 
 
 
+
 char* Tag::getStr(){
-	if(prop->type == TAG_STR) return value.asstr;
+	if(prop->type == TAG_STR)
+		if(value.asstr == NULL){
+			ESP_LOGE(tag, "value as string have NULL pointer");
+			return defString;
+		}else{
+			return value.asstr;
+		}
 	else {
 		ESP_ERROR_CHECK(ESP_ERR_TYPE);
-		return NULL;
+		return defString;
 	}
 }
 
@@ -234,7 +251,7 @@ err1_t Tag::set(float val) {
 err1_t Tag::set(const char* val, size_t size) {
 	if(this->prop->type != TAG_STR) {return ESP_ERR_TYPE;}
 
-	if(value.asstr != NULL) {delete [] this->value.asstr;}			/* deleting of old array */
+	if(value.asstr != NULL) {delete [] this->value.asstr;}			/* deleting of old array ??????????? pointer must be */
 	this->value.asstr = new char[size+1];							/* creating of new array */
 	strcpy(this->value.asstr, val);
 
@@ -473,154 +490,3 @@ Tag* Tag::getNextByCategory(uint16_t* index, const char* cat) {
 	}
 	return NULL;
 }
-
-/*err1_t Tag::get(uint32_t* val) {
-	err1_t err = ESP_OK;
-	if(this->prop->type != TAG_UI32) {err = ESP_ERR_TYPE;}	//chack type
-	if(val == NULL){err = ESP_ERR_TAG_NULL_POINTER;}		//chack pointer
-	if(err == ESP_OK) {*val = value.asui32;}
-	else {ESP_ERROR_CHECK(err);} 	//crash
-	return ESP_OK;
-}*/
-/*err1_t Tag::get(char** val) {
-	err1_t err = ESP_OK;
-	if(this->prop->type != TAG_STR) {err = ESP_ERR_TYPE;}	//chack type
-	if(val == NULL){err = ESP_ERR_TAG_NULL_POINTER;}		//chack pointer
-	if(err == ESP_OK) {*val = value.asstr;}
-	else {ESP_ERROR_CHECK(err);} 	//crash
-	return ESP_OK;
-}*/
-
-/*
- *
- * ------ver 1 with default saving of data to NVS -----------
-err1_t Tag::readStr() {
-	open();
-	size_t size;//= CHAR_BUFF_SIZE;
-	err1_t err = nvs_get_str(handle, prop->name, NULL, &size);	//reading present and size of string
-	if(err == ESP_OK){	//key present, string may have zero size
-		value.asstr = (char*) malloc(size + 1);	//allocating of memory; during reading value didn't need free previos pointer
-		if(value.asstr != NULL) {
-				//----------here must be free of value.asstr pointer----------
-			err = nvs_get_str(handle, prop->name, value.asstr, &size);
-			if(err != ESP_OK){
-				value.asstr = prop->val.asstr;
-				ESP_LOGW(tag, "Reading str parameter %s , err= %s",prop->name, err);
-			}else{ ESP_LOGI(tag, "Reading parameter %s = %s, size = %d",prop->name, value.asstr, size);	}
-		}
-		else{//not enough free heap
-			ESP_LOGE(tag, "No free heap malloc null pointer");
-			ESP_ERROR_CHECK(err)
-		}
-	}
-	else if(err == ESP_ERR_NVS_INVALID_NAME){ //set property with default value
-		value.asstr = prop->val.asstr;
-		ESP_LOGW(tag, "Reading absent parameter %s set default %s, err= %s",prop->name, value.asstr, err);
-		err = nvs_set_str(handle, prop->name, prop->val.asstr);
-		if(err != ESP_ERR_TAG_OK) ESP_LOGE(tag, "saving parameter %s, err= %s",prop->name, err);
-	}
-	else{
-		ESP_LOGW(tag, "Reading str parameter %s , err= %s",prop->name, err);
-		value.asstr = prop->val.asstr;
-	}
-	close();
-	return ESP_ERR_TAG_OK;
-}
-
-err1_t Tag::readUI32() {
-	err1_t err = nvs_get_u32(handle, prop->name, &value.asui32);	//reading value
-	if(err == ESP_OK) return ESP_OK;
-	value.asui32 = prop->val.asui32;
-#ifdef  ESP_ERR_TAG_SAVE_DEF
-	if(err == ESP_ERR_NVS_INVALID_NAME){ //set property with default value
-		err = nvs_set_u32(handle, prop->name, prop->val.asui32);	//savin def value
-		if(err != ESP_OK) return ESP_ERR_TAG_SAVE_DEF;
-		return ESP_INF_TAG_SAVE_DEF;
-	}
-#endif
-	return err;
-}
-
-*/
-/*
-
- ------ver 2 without default saving of data to NVS -----------
-err1_t Tag::readUI32() {
-	open();
-	err1_t err = nvs_get_u32(handle, prop->name, &value.asui32);	//reading present and size of string
-
-	if(err == ESP_ERR_NVS_INVALID_NAME){ //set property with default value
-		value.asui32 = prop->val.asui32;
-		ESP_LOGW(tag, "Reading absent parameter %s set default %s, err= %s",prop->name, value.asstr, err);
-		err = nvs_set_u32(handle, prop->name, prop->val.asui32);
-		if(err != ESP_ERR_TAG_OK) ESP_LOGE(tag, "saving parameter %s, err= %s",prop->name, err);
-	}else if(err == ESP_OK){	//key present, string may have zero size
-
-	}
-	else{
-		ESP_LOGW(tag, "Reading str parameter %s , err= %s",prop->name, err);
-		value.asui32 = prop->val.asui32;
-	}
-	close();
-	return ESP_ERR_TAG_OK;
-}
-*/
-
-
-/*
- * Tag::Tag(const tagProp_t* tagProp, val_t v = NULL) {
-		//reg Tag
-	ESP_ERROR_CHECK(Tag::arrAdd(this));
-		//reg propertyes
-	if(tagProp == NULL){ESP_ERROR_CHECK(ESP_ERR_TAG_NULL_POINTER);}
-	this->prop = tagProp;
-		//init value
-	if(v != NULL){this->value = v;}
-	else {value = tagProp->val;}
-}*/
-
-/*Tag::Tag(const tagProp_t* tagProp, uint32_t v) {
-	ESP_ERROR_CHECK(Tag::arrAdd(this));
-	this->value.asui32 = v;
-}*/
-
-
-/*
-err1_t Tag::saveStr() {
-	open();
-	err1_t err = nvs_set_str(handle, prop->name, prop->val.asstr);
-	if(err != ESP_ERR_TAG_OK) ESP_LOGW(tag, "saving parameter %s, err= %s",prop->name, err);
-	close();
-	return ESP_ERR_TAG_OK;
-}
-*/
-
-
-
-/*
-err1_t Tag::set(char* key, char* val) {
-	return ESP_ERR_TAG_OK;
-}
-
-err1_t Tag::get(char* val) {
-	return ESP_ERR_TAG_OK;
-}*/
-
-
-/*err1_t Tag::init(const tagProp_t* tagProp){
-	err1_t err;
-		//reg propertyes
-	if(tagProp == NULL){err = ESP_ERR_TAG_NULL_POINTER; goto err;}
-		//reg Tag
-	err = Tag::arrAdd(this);
-	if (err != ESP_ERR_TAG_OK) {goto err;}
-	this->prop = tagProp;
-err:	return err;
-}*/
-
-/*Tag::Tag(const tagProp_t* tagProp) {
-	init(tagProp, TAG_STR);
-		//initialization of value
-	//this->value.asstr = tagProp->val.asstr;
-	value = tagProp->val;
-}*/
