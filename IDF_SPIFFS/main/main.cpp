@@ -53,7 +53,7 @@ extern "C" void app_main(void) {
 	//const val_t vt = {.asstr = "mode"};
 	//const tagProp_t tpt = {"vanavaks","WIFI",TAG_STR,SAVEBLE,vt};
 #if 0
-	const tagProp_t tpt1 = {.name = C_ssid, .category = C_cat, .type = TAG_STR, .saveble = SAVEBLE, .val = {.asstr = (char *)"asdf"}};
+	const tagProp_t tpt1 = {.KeyName = C_ssid, .category = C_cat, .type = TAG_STR, .saveble = SAVEBLE, .val = {.asstr = (char *)"asdf"}};
 
 	 // = new TagNVS(tpt2);
 	 tag3 = new Tag(&tpt1);

@@ -17,10 +17,11 @@
 extern "C" {
 #endif
 
-#define Pstr(_name, _cat, _savebl, _def) {.name = (_name), .category = (_cat), .type = TAG_STR, .saveble = (_savebl), .val = { .asstr = (char*)(_def) }}
-#define Pui32(_name, _cat, _savebl, _def) {.name = (_name), .category = (_cat), .type = TAG_UI32, .saveble = (_savebl), .val = { .asi32 = (int32_t)(_def) }}
-#define Pbool(_name, _cat, _savebl, _def) {.name = (_name), .category = (_cat), .type = TAG_BOOL, .saveble = (_savebl), .val = { .asbool = (bool)(_def) }}
-
+#define Pstr(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_STR, .saveble = (_savebl), .val = { .asstr = (char*)(_def) }}
+#define Pui32(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_UI32, .saveble = (_savebl), .val = { .asi32 = (int32_t)(_def) }}
+#define Pbool(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_BOOL, .saveble = (_savebl), .val = { .asbool = (bool)(_def) }}
+#define TagIp(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_IP, .saveble = (_savebl), .val = { .asui32 = (uint32_t)(_def) }}
+#define TagTime(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_Time, .saveble = (_savebl), .val = { .asi32 = (int32_t)(_def) }}
 
 enum PAR_openMode{
 	openOnce,
@@ -53,7 +54,7 @@ enum PAR_openMode{
 #define ESP_ERR_TAG_NAME				(ESP_ERR_TAG_BASE + 0x07)
 
 #define SAVE_NVS_DEF_VAL
-enum paramtype_t : uint8_t { TAG_BOOL, TAG_I8, TAG_UI8, TAG_I16, TAG_UI16, TAG_I32, TAG_UI32, TAG_FLOAT, TAG_CHAR, TAG_STR, TAG_PSWD };
+enum paramtype_t : uint8_t { TAG_BOOL, TAG_I8, TAG_UI8, TAG_I16, TAG_UI16, TAG_I32, TAG_UI32, TAG_FLOAT, TAG_CHAR, TAG_STR, TAG_PSWD, TAG_IP, TAG_T };
 #define SAVEBLE true
 
 
@@ -73,7 +74,7 @@ struct val_t{
 };
 
 struct tagProp_t{
-	const char* name;
+	const char* KeyName;
 	const char* category;
 	paramtype_t type;
 	bool saveble;
@@ -91,24 +92,25 @@ public:
 	Tag(const Tag& tag) : prop(tag.prop), value(tag.value){ESP_ERROR_CHECK(Tag::arrAdd(this));}
 	virtual ~Tag();
 
-	Tag & operator= (const uint32_t v){ESP_ERROR_CHECK(set(v));return *this;}
+	static void begin();
 
-
+	//Tag & operator= (const uint32_t v){ESP_ERROR_CHECK(set(v));return *this;}
 
 
 	err1_t set(uint32_t val);		//установка значени€ с проверкой типа
 	//static err1_t set(char* key, uint32_t val); //установка значени€ с проверкой типа по ключу, не име€ екземпл€ра тега
+	err1_t setUI32(uint32_t val){ return set(val); }
 
 	//err1_t get(uint32_t* val);
-	static err1_t get(char* key, uint32_t* val);
+	//static err1_t get(char* key, uint32_t* val);
 	uint32_t getUI32();
 
 	err1_t set(const char* val, size_t size);		/* сохранение созданием новой строки в куче c удалением из кучи предыдущей */
+	err1_t setSTR(const char* val, size_t size){return set(val, size);}
 	err1_t setNew(char* val);
 	//static err1_t set(const char* key, const char* val){return 0;}; //установка значени€ с проверкой типа по ключу, не име€ екземпл€ра тега
 
-	//err1_t get(char** val);
-	static err1_t get(char* key, char* val);
+	//err1_t get(char** val);//static err1_t get(char* key, char* val);
 	char* getStr();
 
 	err1_t set(bool val);
@@ -121,64 +123,71 @@ public:
 	int32_t getI32();
 	float getFL();
 
-	 //interfase for parameters implementing
-	virtual void read();
-	virtual void save();
-	/*virtual err1_t setPar(char* key);
-	virtual err1_t getPar(char* key);
-	virtual err1_t commitPar();*/
-	static void initNVS();
-	//virtual void init(const tagProp_t* tagProp);
-	static void begin();
+
 	static void printAll();
 	void Print();
 	void PrintAdr();
-
+			/* return number of tags */
 	static uint16_t getTagNumb(){return indHead;}
 	static Tag* getByIndex(uint16_t i){if(i<indHead) return arr[i]; else return NULL;}
 	static Tag* getNextByCategory(uint16_t* index, const char* cat);
+			/* setting a tag by key */
 	static err1_t set(const char* key, const char* value);
+			/* return tag's value size */
 	size_t size();
 
-	const char* getName() {return this->prop->name;}
+			/* getters */
+	const char* getKey() {return this->prop->KeyName;}
 	paramtype_t getType() {return this->prop->type;}
 	bool 		isSaveble() {return this->prop->saveble;}
 
 protected:
 	Tag();
 	const tagProp_t* prop;
-
-	err1_t saveVal(val_t v);
-	//void init(const tagProp_t* tagProp, paramtype_t tagType);
-	void init(const tagProp_t* tagProp);
-
-
-
-
 	val_t value;
 	int16_t index = -1;  //-1 - noinit
+
+
+
+	err1_t saveVal(val_t v);
+	void init(const tagProp_t* tagProp);
+	static Tag* findTag(const char* key);
+
+
+
+
+
+
+	static nvs_handle handle;
+	static uint16_t indHead;
+	static Tag* arr[CONFIG_TAG_ARR_SIZE];
+	static bool isInit;
+	static uint32_t saveCnt;
+
+	static void arrInit();
+	static err1_t arrAdd(Tag* tag);
+	static bool chackKey(const char* name);
+
+	/* ============================== NVS ===================================== */
+
+			/* Initialization NVS system */
+	static void initNVS();
+			/* open nvs for value saving */
 	inline void open(){
 #ifdef TAGNVS_OPEN_MODE_EVERY
 		 ESP_ERROR_CHECK(nvs_open("par", NVS_READWRITE, &handle));
 #endif
 	};
-
+			/* read from NVS */
+	void read();
+			/* save to NVS */
+	void save();
+			/* close nvs after value saving */
 	inline void close(){
 #ifdef TAGNVS_OPEN_MODE_EVERY
 		nvs_close(handle);
 #endif
 	};
-	static Tag* findTag(const char* key);
-	static nvs_handle handle;
-	static uint16_t indHead;
-	static Tag* arr[CONFIG_TAG_ARR_SIZE];
-	static void arrInit();
-	static err1_t arrAdd(Tag* tag);
-	static bool chackName(const char* name);
-	static uint32_t saveCnt;
-	static bool isInit;
-	//static err1_t arrGet(uint16_t index, Tag* tag);
-
 };
 
 #ifdef __cplusplus

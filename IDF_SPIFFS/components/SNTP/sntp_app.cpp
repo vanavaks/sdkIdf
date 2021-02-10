@@ -17,6 +17,7 @@
 #include <sys/_timeval.h>
 #include <cstdlib>
 #include <ctime>
+#include "esp_smartconfig.h"
 
 #include "../../../../../../ESP8266_RTOS_SDK_IDF/components/freertos/port/esp8266/include/freertos/portmacro.h"
 #include "Tag.h"
@@ -96,13 +97,14 @@ void sntp_task(void *arg) {
 		ESP_LOGI(TAG,"Updaiting time.");
 		strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
 		if (timeinfo.tm_year < (2016 - 1900)) {
-			sntp_connected = 0;
+			sntp_isSync->set(false);
 			ESP_LOGE(TAG, "The current date/time error");
 		} else {
 			if(sntp_connected == 0){
 				strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
 				ESP_LOGI(TAG, "The current date/time in Ukraine is: %s",strftime_buf);
 			}
+			sntp_isSync->set(true);
 			sntp_connected = 1;
 		}
 

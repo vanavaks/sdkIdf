@@ -21,6 +21,7 @@
 #include "freertos/event_groups.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
+#include "lwip/ip4_addr.h"
 #include "Tag.h"
 
 
@@ -51,10 +52,14 @@ static wifi_config_t wifi_config = { 0 }; //must be local
 #define CONFIG_EXAMPLE_WIFI_SSID		"asumdf"
 #define CONFIG_EXAMPLE_WIFI_PASSWORD 	"sipartsipart"
 #endif
-
-//#define Pstr(_name, _cat, _savebl, _def) {.name = (_name), .category = (_cat), .type = TAG_STR, .saveble = (_savebl), .val = { .asstr = (char*)(_def) }}
+#define STATIC_IP		"192.168.0.222"
+#define SUBNET_MASK		"255.255.255.0"
+#define GATE_WAY		"192.168.0.1"
+#define DNS_SERVER		"8.8.8.8"
 
 static const char * tag = "wifi";
+
+#define EN_STAT_IP
 
 const char defSsid[] = "asumdf";
 const char defPass[] = "sipartsipart";
@@ -64,10 +69,20 @@ const tagProp_t prop_WIFI_ssid2 = Pstr("WIFI_ssid2","Net",SAVEBLE,"asumdf");
 const tagProp_t prop_WIFI_pass1 = Pstr("WIFI_pass_1","Net",SAVEBLE,"programmer");
 const tagProp_t prop_WIFI_pass2 = Pstr("WIFI_pass_2","Net",SAVEBLE,"sipartsipart");
 
+const tagProp_t prop_WIFI_IP = 		Pstr("WIFI_IP","Net",SAVEBLE,"192.168.0.222");
+const tagProp_t prop_WIFI_mask = 	Pstr("WIFI_mask","Net",SAVEBLE,"255.255.255.0");
+const tagProp_t prop_WIFI_gw = 		Pstr("WIFI_gw","Net",SAVEBLE,"192.168.0.1");
+const tagProp_t prop_WIFI_DNS = 	Pstr("WIFI_DNS","Net",SAVEBLE,"8.8.8.8");
+
 Tag* tag_WIFI_ssid1{0};
 Tag* tag_WIFI_ssid2{0};
 Tag* tag_WIFI_pass1{0};
 Tag* tag_WIFI_pass2{0};
+
+Tag* tag_WIFI_IP{0};
+Tag* tag_WIFI_mask{0};
+Tag* tag_WIFI_gw{0};
+Tag* tag_WIFI_DNS{0};
 
 static char s_connection_name[32] = CONFIG_EXAMPLE_WIFI_SSID;
 static char s_connection_passwd[32] = CONFIG_EXAMPLE_WIFI_PASSWORD;
@@ -86,9 +101,74 @@ static void strInit(char* s, uint8_t len){
 	}
 }
 
+
+
 static void wifi_start( Tag* ssid, Tag* pass){
 	strInit((char *)&wifi_config.sta.ssid, 32);
 	strInit((char *)&wifi_config.sta.password, 32);
+
+		/* setting of static network parameters */
+#if 0
+	tcpip_adapter_ip_info_t tcp_info = {/*.ip = 0, .netmask = 0, .gw = 0*/};
+
+
+	IP4_ADDR(&tcp_info.ip, 192, 168, 0, 105);
+	IP4_ADDR(&tcp_info.netmask, 255,255,255,0);
+	IP4_ADDR(&tcp_info.gw, 192,168,0,1);
+
+	tcp_info.ip.addr = 0xC0A80069;
+	tcp_info.netmask.addr = 0xffffff00;
+	tcp_info.gw.addr = 0xC0A80001;
+#endif
+
+
+#if 0
+	/* checking dhcp status must be stoped */
+tcpip_adapter_dhcp_status_t dhcpcStatus, dhcpsStatus;
+esp_err_t e;
+tcpip_adapter_dhcps_get_status(TCPIP_ADAPTER_IF_STA, &dhcpsStatus);
+ESP_LOGI(TAG,"DHCPS status - %d", dhcpsStatus);
+if(dhcpsStatus == TCPIP_ADAPTER_DHCP_INIT){
+	e = tcpip_adapter_dhcps_start(TCPIP_ADAPTER_IF_STA);
+	ESP_LOGI(TAG,"starting DHCPS... Result - %d", e);
+}
+if (dhcpsStatus == TCPIP_ADAPTER_DHCP_STARTED ){
+	e = tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_STA);
+	ESP_LOGI(TAG,"DHCPS was started - stopping...  Result - %d", e);
+	tcpip_adapter_dhcps_get_status(TCPIP_ADAPTER_IF_STA, &dhcpsStatus);
+}
+
+tcpip_adapter_dhcpc_get_status(TCPIP_ADAPTER_IF_AP, &dhcpcStatus);
+ESP_LOGI(TAG,"DHCPC status - %d", dhcpcStatus);
+if(dhcpcStatus == TCPIP_ADAPTER_DHCP_INIT){
+	e = tcpip_adapter_dhcpc_start(TCPIP_ADAPTER_IF_AP);
+	ESP_LOGI(TAG,"starting DHCPC... Result - %d", e);
+}
+if (dhcpcStatus == TCPIP_ADAPTER_DHCP_STARTED){
+	esp_err_t e = tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_AP);
+	ESP_LOGI(TAG,"DHCPC was started - stopping... \r\n Result - %d", e);
+	tcpip_adapter_dhcps_get_status(TCPIP_ADAPTER_IF_AP, &dhcpcStatus);
+}
+
+//	ESP_LOGI(TAG,"Stoping DHCP .");
+//	uint64_t i = 0;
+//	while(dhcpcStatus == TCPIP_ADAPTER_DHCP_STARTED || dhcpcStatus == TCPIP_ADAPTER_DHCP_STARTED){
+//		if(i % 100000 == 0) printf(".");
+//		if(i++ > 2000000000) break;
+//
+//	}
+
+if((dhcpcStatus == TCPIP_ADAPTER_DHCP_STOPPED && dhcpsStatus == TCPIP_ADAPTER_DHCP_STOPPED)){
+	ESP_LOGI(TAG,"====== seting static net config ======");
+	ESP_ERROR_CHECK(tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_STA,&tcp_info));
+	ESP_LOGI(TAG,"====== seting static net config ======");
+}
+#endif
+
+
+	//ESP_LOGI(TAG,"IP = %x", (uint32_t)tcp_info.ip);
+	//ESP_LOGI(TAG,"Mask = %x", (uint32_t)tcp_info.netmask);
+	//ESP_LOGI(TAG,"Hateway = %x", (uint32_t)tcp_info.gw);
 
 	if(ssid != NULL){
 		strncpy((char *)&wifi_config.sta.ssid, ssid->getStr(), ssid->size());
@@ -169,7 +249,10 @@ static void on_got_ipv6(void *arg, esp_event_base_t event_base,
 
 #endif // CONFIG_EXAMPLE_CONNECT_IPV6
 
-
+static void on_wifi_connect(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+{
+    //tcpip_adapter_create_ip6_linklocal(TCPIP_ADAPTER_IF_STA);
+}
 
 static void start(void)
 {
@@ -178,6 +261,7 @@ static void start(void)
 
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &on_wifi_disconnect, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &on_got_ip, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, &on_wifi_connect, NULL));
 #ifdef CONFIG_EXAMPLE_CONNECT_IPV6
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, &on_wifi_connect, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_GOT_IP6, &on_got_ipv6, NULL));
@@ -242,6 +326,24 @@ esp_err_t wifi_connect(void)
         return ESP_ERR_INVALID_STATE;
     }
 
+#ifdef EN_STAT_IP
+    esp_err_t e;
+	e = tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
+	ESP_LOGI(TAG,"stoping dhcps - %d", e);
+			//Set static IP
+	tcpip_adapter_ip_info_t ipInfo;
+	inet_pton(AF_INET, tag_WIFI_IP->getStr(), &ipInfo.ip);
+	inet_pton(AF_INET, tag_WIFI_gw->getStr(), &ipInfo.gw);
+	inet_pton(AF_INET, tag_WIFI_mask->getStr(), &ipInfo.netmask);
+	e = tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_STA, &ipInfo);
+	ESP_LOGI(TAG,"seting static net config - %d", e);
+			//Set Main DNS server
+	tcpip_adapter_dns_info_t dnsInfo;
+	inet_pton(AF_INET, tag_WIFI_DNS->getStr(), &dnsInfo.ip);
+	e = tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_STA, TCPIP_ADAPTER_DNS_MAIN, &dnsInfo);
+	ESP_LOGI(TAG,"seting dns info - %d", e);
+#endif
+
     s_connect_event_group = xEventGroupCreate();
     start();
     xEventGroupWaitBits(s_connect_event_group, CONNECTED_BITS, true, true, portMAX_DELAY);
@@ -281,6 +383,12 @@ esp_err_t wifi_begin(){
 	tag_WIFI_ssid2 = new Tag(&prop_WIFI_ssid2);
 	tag_WIFI_pass1 = new Tag(&prop_WIFI_pass1);
 	tag_WIFI_pass2 = new Tag(&prop_WIFI_pass2);
+
+
+	tag_WIFI_IP = new Tag(&prop_WIFI_IP);
+	tag_WIFI_mask = new Tag(&prop_WIFI_mask);
+	tag_WIFI_gw = new Tag(&prop_WIFI_gw);
+	tag_WIFI_DNS = new Tag(&prop_WIFI_DNS);
 
 	Tag::printAll();
 

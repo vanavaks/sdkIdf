@@ -234,7 +234,7 @@ char* html_webInputFieldElement(char* buff, const char* style, const char* label
 }
 #endif
 
-char* html_webCheckBoxElement(char* buff, char* style, char* label, char* value, char* name){
+char* html_webCheckBoxElement(char* buff, char* style, const char* label, bool value, const char* name){
 	strcat(buff,"<div");
 	//size_t *size;
 	//size = strlen(style);
@@ -303,32 +303,32 @@ void http_createParsList(char* buff,const char* category){
 			HTML_LOGD("html","Tag saveble");
 			if(tag->getType() == TAG_STR){					//text input field
 				HTML_LOGD(TAG,"string inputField");
-				//strcat(buff, "<div><p>");
-				html_webInputFieldElement(buff, "", tag->getName(), tag->getStr(), tag->getName(), TAG_VAL_STR_MAX_SIZE_STR);
-				//strcat(buff,"</p></div>");
+				html_webInputFieldElement(buff, "", tag->getKey(), tag->getStr(), tag->getKey(), TAG_VAL_STR_MAX_SIZE_STR);
 			}else if(tag->getType() == TAG_UI32){
 				HTML_LOGD(TAG,"ui32 inputField");
-				//strcat(buff, "<div><p>");
 				char b[15]{0};
 				itoa(tag->getUI32(),b,10);
-				HTML_LOGD(TAG,"לפהדף -'%s'",b);
-				html_webInputFieldElement(buff, "", tag->getName(), b, tag->getName(), TAG_VAL_STR_MAX_SIZE_STR);
-				//strcat(buff,"</p></div>");
+				HTML_LOGD(TAG,"value -'%s'",b);
+				html_webInputFieldElement(buff, "", tag->getKey(), b, tag->getKey(), TAG_VAL_STR_MAX_SIZE_STR);
+			}else if(tag->getType() == TAG_BOOL){
+				bool v = tag->getBL();
+				HTML_LOGD(TAG,"bool value -%d", v);
+				html_webCheckBoxElement(buff, "", tag->getKey(), v, tag->getKey());
 			}else{
 				ESP_LOGW(TAG,"Unhandled tag type %d", tag->getType());
 			}
 		}
 		else{	//text
 			if(tag->getType() == TAG_STR){	//text field
-				//strcat(buff, "<div><p>");
-				html_webTextElement(buff, "", tag->getName(), tag->getStr());
-				//strcat(buff,"</p></div>");
+				html_webTextElement(buff, "", tag->getKey(), tag->getStr());
 			}else if(tag->getType() == TAG_UI32){
-				//strcat(buff, "<div><p>");
 				char b[15]{0};
 				itoa(tag->getUI32(),b,10);
-				html_webTextElement(buff, "", tag->getName(), b);
-				//strcat(buff,"</p></div>");
+				html_webTextElement(buff, "", tag->getKey(), b);
+			}else if(tag->getType() == TAG_BOOL){
+				bool v = tag->getBL();
+				HTML_LOGD(TAG,"bool value -%d", v);
+				html_webCheckBoxElement(buff, "", tag->getKey(), v, tag->getKey());
 			}else{
 				ESP_LOGW(TAG,"Unhandled tag type %d", tag->getType());
 			}

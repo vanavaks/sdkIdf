@@ -43,7 +43,7 @@ void Tag::begin(){
 
 Tag* Tag::findTag(const char* key){
 	for(int i=0;i<indHead;i++){
-		if (!strcmp(key,arr[i]->prop->name)) return arr[i];
+		if (!strcmp(key,arr[i]->prop->KeyName)) return arr[i];
 	}
 	return NULL;
 }
@@ -93,9 +93,9 @@ err1_t Tag::set(const char* key, const char* value) {
 	return ESP_ERR_TYPE;
 }
 
-bool Tag::chackName(const char* name){
+bool Tag::chackKey(const char* name){
 	for(int i=0;i<indHead;i++){
-		if (!strcmp(name,arr[i]->prop->name)) return false;
+		if (!strcmp(name,arr[i]->prop->KeyName)) return false;
 	}
 	return true;
 }
@@ -107,7 +107,7 @@ void Tag::init(const tagProp_t* tagProp){
 		//check properties pointer
 	if(tagProp == NULL){err = ESP_ERR_TAG_NULL_POINTER; goto err;}
 		//chack name
-	if(!chackName(tagProp->name)){err = ESP_ERR_TAG_NAME; goto err;}
+	if(!chackKey(tagProp->KeyName)){err = ESP_ERR_TAG_NAME; goto err;}
 		//reg Tag
 	err = Tag::arrAdd(this);
 		//reg properties
@@ -149,10 +149,10 @@ Tag::Tag(const tagProp_t* tagProp) {
 	}
 }
 
-
+/*
 err1_t Tag::get(char* key, char* val) {
 	return ESP_ERR_TAG_OK;
-}
+}*/
 
 
 err1_t Tag::set(uint32_t val) {
@@ -258,10 +258,10 @@ err1_t Tag::set(const char* val, size_t size) {
 	if(prop->saveble) save();
 	return ESP_ERR_TAG_OK;
 }
-
+/*
 err1_t Tag::get(char* key, uint32_t* val) {
 	return ESP_ERR_TAG_OK;
-}
+}*/
 
 //==================================== NVS ==============================================//
 
@@ -295,7 +295,7 @@ void Tag::read() {
 
 	if(prop->type == TAG_STR){
 		size_t size;//= CHAR_BUFF_SIZE;
-		err = nvs_get_str(handle, prop->name, NULL, &size);	//reading present and size of string
+		err = nvs_get_str(handle, prop->KeyName, NULL, &size);	//reading present and size of string
 		if(err == ESP_OK){	//key present, string may have zero size
 			value.asstr = (char*) malloc(size + 1);	//allocating of memory; during reading value didn't need free previos pointer
 			if(value.asstr == NULL) {
@@ -303,35 +303,35 @@ void Tag::read() {
 				ESP_ERROR_CHECK(ESP_ERR_TAG_NULL_POINTER)
 			}
 				//----------here must be free of value.asstr pointer----------
-			err = nvs_get_str(handle, prop->name, value.asstr, &size);
-			ESP_LOGI(tag, "NVS get value %s = %s", prop->name, value.asstr);
+			err = nvs_get_str(handle, prop->KeyName, value.asstr, &size);
+			ESP_LOGI(tag, "NVS get value %s = %s", prop->KeyName, value.asstr);
 		}
 		if(err != ESP_OK) value.asstr = prop->val.asstr;
 	}
 
 	else if(prop->type == TAG_UI32){
-		err = nvs_get_u32(handle, prop->name, &value.asui32);
+		err = nvs_get_u32(handle, prop->KeyName, &value.asui32);
 		if(err != ESP_OK) value.asui32 = prop->val.asui32;
 	}
 	else if(prop->type == TAG_UI8){
 		unsigned char v;
-		err = nvs_get_u8(handle, prop->name, &v);
+		err = nvs_get_u8(handle, prop->KeyName, &v);
 		value.asui8 = (uint8_t)v;
 		if(err != ESP_OK) value.asui8 = prop->val.asui8;
 	}
 	else if(prop->type == TAG_I32){
-		err = nvs_get_i32(handle, prop->name, &value.asi32);
+		err = nvs_get_i32(handle, prop->KeyName, &value.asi32);
 		if(err != ESP_OK) value.asi32 = prop->val.asi32;
 	}
 	else if(prop->type == TAG_FLOAT){
 		float v;
 		size_t size = sizeof(v);
-		err = nvs_get_blob(handle, prop->name, &value.asfloat, &size);
+		err = nvs_get_blob(handle, prop->KeyName, &value.asfloat, &size);
 		if(err != ESP_OK) value.asfloat = prop->val.asfloat;
 	}
 	else if(prop->type == TAG_BOOL){
 		unsigned char v;
-		err = nvs_get_u8(handle, prop->name, &v);
+		err = nvs_get_u8(handle, prop->KeyName, &v);
 		if(v > 0) value.asbool = true;
 		else  value.asbool = false;
 		if(err != ESP_OK) value.asbool = prop->val.asbool;
@@ -343,12 +343,12 @@ void Tag::read() {
 	switch (err){
 
 		case ESP_ERR_NVS_INVALID_NAME:
-			ESP_LOGW(tag, "Reading absent parameter in NVS %s, err= %d",prop->name, err);
+			ESP_LOGW(tag, "Reading absent parameter in NVS %s, err= %d",prop->KeyName, err);
 			break;
 		case ESP_OK:
 			break;
 		default:
-			ESP_LOGW(tag, "Reading parameter %s, err= %x", prop->name, err);
+			ESP_LOGW(tag, "Reading parameter %s, err= %x", prop->KeyName, err);
 		;
 	}
 	close();
@@ -357,28 +357,28 @@ void Tag::read() {
 void Tag::save() {
 	open();
 	err1_t err = ESP_OK;
-	ESP_LOGI(tag, "Trying to save parameter %s",prop->name);
+	ESP_LOGI(tag, "Trying to save parameter %s",prop->KeyName);
 	saveCnt++;			//???????????
 	if(prop->type == TAG_STR){
-		err = nvs_set_str(handle, prop->name, value.asstr);
+		err = nvs_set_str(handle, prop->KeyName, value.asstr);
 	}else if(prop->type == TAG_UI32){
-		err = nvs_set_u32(handle, prop->name, value.asui32);
+		err = nvs_set_u32(handle, prop->KeyName, value.asui32);
 	}else if(prop->type == TAG_BOOL){
-		err = nvs_set_u8(handle, prop->name, value.asbool);
+		err = nvs_set_u8(handle, prop->KeyName, value.asbool);
 	}else if(prop->type == TAG_UI8){
-		err = nvs_set_u8(handle, prop->name, value.asui8);
+		err = nvs_set_u8(handle, prop->KeyName, value.asui8);
 	}else if(prop->type == TAG_I32){
-		err = nvs_set_i32(handle, prop->name, value.asi32);
+		err = nvs_set_i32(handle, prop->KeyName, value.asi32);
 	}else if(prop->type == TAG_FLOAT){
-		err = nvs_set_blob(handle, prop->name, &value.asfloat,sizeof(float));
+		err = nvs_set_blob(handle, prop->KeyName, &value.asfloat,sizeof(float));
 	}else {ESP_ERROR_CHECK(ESP_ERR_TYPE); saveCnt--;}
 
-	if(err != ESP_OK) ESP_LOGW(tag, "saving parameter %s, err= %d",prop->name, err);
+	if(err != ESP_OK) ESP_LOGW(tag, "saving parameter %s, err= %d",prop->KeyName, err);
 	close();
 }
 
 void Tag::Print(){
-	printf("Tag: category - %s, name - %s, ",prop->category , prop->name);
+	printf("Tag: category - %s, name - %s, ",prop->category , prop->KeyName);
 	if(prop->type == TAG_STR) printf("type - str, val = %s, def val = %s", value.asstr , prop->val.asstr);
 	else if(prop->type == TAG_UI32) printf("type - ui32, val = %d, def val = %d, ", value.asui32, prop->val.asui32);
 	else if(prop->type == TAG_I32) printf("type - i32, val = %d, def val = %d, ", value.asi32, prop->val.asi32);
