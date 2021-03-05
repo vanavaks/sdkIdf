@@ -17,20 +17,51 @@
 #include <Tag.h>
 #include <wifi_connect.h>
 #include "main.h"
+#include "tlg.h"
 
-//extern uint8_t sntp_connected;
+const char* tagMain = "Main";
 
-const char* tag1 = "Main";
-Tag* tag2;
-Tag*	 tag3;
 extern "C" void app_main(void) {
-	ESP_LOGI(tag1, "Nvs_flash_init starting from main");
-	Tag::begin();		//nitialize_nvs();
+
+	ESP_LOGI(tagMain, "Nvs_flash_init starting from main");
+
+	ESP_LOGI(tagMain, "Tags initialization");
+	Tag::begin();		//initialize_nvs();
+
+
 
 	ESP_ERROR_CHECK(esp_netif_init());
+
+	ESP_LOGI(tagMain, "Event loop initialization");
 	ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+	ESP_LOGI(tagMain, "Starting telegram task");
+	xTaskCreate(&tlg_task, "tlg_task", 20000, NULL, 5, NULL);
 
+	ESP_LOGI(tagMain, "Coneecting to wifi");
+	ESP_ERROR_CHECK(wifi_begin());
+
+	//-----------register_OtaUpdate();
+
+	//ESP_LOGI(tagMain, "Connecting to SNTP server");
+	//sntp_start();
+
+	//ESP_LOGI(tagMain, "Starting web server");
+	//http_startWebServer();
+
+
+
+	ESP_LOGI(tagMain, "Starting console task");
+	//xTaskCreate(&cmd_task, "cmd_task", 8000, NULL, 5, NULL);
+}
+
+
+#if 0
+//extern uint8_t sntp_connected;
+
+
+Tag* tag2;
+Tag*	 tag3;
 //#define Pstr(_name, _cat, _savebl, _def) {.name = (_name), .category = (_cat), .type = TAG_STR, .saveble = (_savebl), .val = { .asstr = (char*)(_def) }}
 
 
@@ -76,7 +107,6 @@ extern "C" void app_main(void) {
 	ESP_LOGI("main", "tag2=%s", rv);
 	//ESP_LOGI("main", "tagInt=%d", int32);
 #endif
-	ESP_ERROR_CHECK(wifi_begin());
 /*
 const tagProp_t param[] = {
 		Pstr(C_ssid, C_cat, TAG_STR, true, C_ssid)
@@ -117,12 +147,4 @@ const tagProp_t param12[] = {
 	//Tag* T3 = new TagNVS(param);
 
 
-	//-----------register_OtaUpdate();
-	sntp_start();
-	//--------ESP_LOGI("main", "trying to starting console task");
-	//--------while (sntp_getStat() == 0) {}
-	ESP_LOGI("main", "starting console task");
-	http_startWebServer();
-	xTaskCreate(&cmd_task, "cmd_task", 8192, NULL, 5, NULL);
-
-}
+#endif

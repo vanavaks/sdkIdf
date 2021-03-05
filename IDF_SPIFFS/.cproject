@@ -56,6 +56,7 @@
 									<listOptionValue builtIn="false" value="&quot;${IDF_PATH}/components/lwip/lwip/src/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${IDF_PATH}/components/console&quot;"/>
 									<listOptionValue builtIn="false" value="../../BaseConfig/Tag.h"/>
+									<listOptionValue builtIn="false" value="&quot;${IDF_PATH}/components/mbedtls/mbedtls/include&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.757961176" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
