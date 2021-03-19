@@ -17,6 +17,8 @@ extern "C" {
 
 
 void http_startWebServer();
+void http_stopWebServ();
+void http_strtWebServ();
 
 #ifdef __cplusplus
 }

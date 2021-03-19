@@ -9,8 +9,12 @@
 
 /* Libraries */
 
-#include "utlgbotlib.h"
-#include "stdlib.h"
+#include <multihttpsclient_espidf.h>
+#include <stddef.h>
+#include <sys/_stdint.h>
+#include <sys/_timeval.h>
+#include <utlgbotlib.h>
+#include "esp_log.h"
 /**************************************************************************************************/
 
 /* Macros */
@@ -20,10 +24,14 @@
     #define _println(x) do { if(_debug_level) Serial.println(x); } while(0)
     #define _printf(...) do { if(_debug_level) Serial.printf(__VA_ARGS__); } while(0)
 #elif defined(ESP_IDF) // ESP32 ESPIDF Framework
-    #define _print(x) do { if(_debug_level) printf("%s", x); } while(0)
-    #define _println(x) do { if(_debug_level) printf("%s\n", x); } while(0)
-    #define _printf(...) do { if(_debug_level) printf(__VA_ARGS__); } while(0)
-
+    //#define _print(x) do { if(_debug_level) printf("%s", x); } while(0)
+    //#define _println(x) do { if(_debug_level) printf("%s\n", x); } while(0)
+    //#define _printf(...) do { if(_debug_level) printf(__VA_ARGS__); } while(0)
+	static const char *TAG = "Bot";
+	#define _println(x) do { if(_debug_level) 		ESP_LOGI(TAG, x); } while(0)
+	#define _printf(...) do { if(_debug_level) 		ESP_LOGI(TAG,__VA_ARGS__); } while(0)
+	#define _printfW(...) do { if(_debug_level) 	ESP_LOGW(TAG,__VA_ARGS__); } while(0)
+	#define _printfE(...) do { if(_debug_level) 	ESP_LOGE(TAG,__VA_ARGS__); } while(0)
     #define F(x) x
     #define PSTR(x) x
 	#define snprintf_P(str, n, ...) do { sprintf(str, __VA_ARGS__); } while(0)
@@ -45,22 +53,32 @@
 
 /* Constructor & Destructor */
 
+
+#include "time.h"
+time_t now;
+struct tm timeinfo;
+char strftime_buf[64];
+static char msg[HTTP_MAX_BODY_LENGTH];
+
+char* getTime(){
+	time(&now);
+	localtime_r(&now, &timeinfo);
+	strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+	return strftime_buf;
+}
+
 // TLGBot constructor, initialize and setup secure client with telegram cert and get the token
 uTLGBot::uTLGBot(const char* token, const bool dont_keep_connection)
 {
 #if defined(ESP_IDF)
 	char c;
+#if TLG_PRINT_CERT
 	for(int i=0;;i++){
 		//c =
-		printf("%c", (char)tlg_api_ca_pem_start[i]);
+		_printf("%c", (char)tlg_api_ca_pem_start[i]);
 		if(tlg_api_ca_pem_start[i] == 0) break;
 	}
-	/*
-	uint8_t * pntr = tlg_api_ca_pem_start;
-	printf("certificate \r\n");
-	for(uint8_t * pntr = tlg_api_ca_pem_start; pntr <= tlg_api_ca_pem_end; pntr++){
-		printf("%c", (char*)pntr);
-	}*/
+#endif
 
 
     _client = new MultiHTTPSClient(tlg_api_ca_pem_start, tlg_api_ca_pem_end);
@@ -110,11 +128,12 @@ void uTLGBot::set_debug(const uint8_t debug_level)
 // Connect to Telegram server
 uint8_t uTLGBot::connect(void)
 {
-    _println(F("[Bot] Connecting to telegram server..."));
+    _println(F("Connecting to telegram server..."));
+    _printf("Heap before connecting %d\n", esp_get_free_heap_size());
 
     if(is_connected())
     {
-        _println(F("[Bot] Already connected to server."));
+        _println(F("Already connected to server."));
         return true;
     }
 
@@ -126,28 +145,29 @@ uint8_t uTLGBot::connect(void)
     }
     if(conn_res != 1)
     {
-        _println(F("[Bot] Conection fail."));
+        _printfW(F("Conection fail."));
         return false;
     }
 
-    _println(F("[Bot] Successfully connected."));
-
+    _println(F("Successfully connected."));
+    _printf("Heap after connecting to server %d\n", esp_get_free_heap_size());
     return true;
 }
 
 // Disconnect from Telegram server
 void uTLGBot::disconnect(void)
 {
-    _println(F("[Bot] Disconnecting from telegram server..."));
-
+    _println(F("Disconnecting from telegram server..."));
+    _printf("Heap before deleting %d\n", esp_get_free_heap_size());
     if(!is_connected())
     {
-        _println(F("[Bot] Already disconnected from server."));
+        _println(F("Already disconnected from server."));
         return;
     }
     _client->disconnect();
 
-    _println(F("[Bot] Successfully disconnected."));
+    _println(F("Successfully disconnected."));
+    _printf("Heap after deleting %d\n", esp_get_free_heap_size());
 }
 
 // Check for Bot connection to server status
@@ -172,13 +192,13 @@ uint8_t uTLGBot::getMe(void)
     }
     
     // Send the request
-    _println(F("[Bot] Trying to send getMe request..."));
+    _println(F("Trying to send getMe request..."));
     request_result = tlg_get(API_CMD_GET_ME, _buffer, HTTP_MAX_RES_LENGTH);
     
     // Check if request has fail
     if(request_result == 0)
     {
-        _println(F("[Bot] Command fail, no response received."));
+        _printfE(F("Command fail, no response received."));
 
         // Disconnect from telegram server
         if(is_connected())
@@ -188,9 +208,8 @@ uint8_t uTLGBot::getMe(void)
     }
 
     // Parse and check response
-    _println(F("\n[Bot] Response received:"));
+    _println(F("Response received:"));
     _println(_buffer);
-    _println(" ");
 
     // Disconnect from telegram server
     if(_dont_keep_connection && is_connected())
@@ -206,7 +225,7 @@ uint8_t uTLGBot::sendMessage(const char* chat_id, const char* text, const char* 
 {
     // Note: Due to undefined behavior if use same source and target in snprintf(), we need to 
     // use a temporary copy array (dont trust strncat)
-    static char msg[HTTP_MAX_BODY_LENGTH];
+    //static char msg[HTTP_MAX_BODY_LENGTH];
 
 #if 0
     char temp[HTTP_MAX_BODY_LENGTH];
@@ -244,7 +263,7 @@ uint8_t uTLGBot::sendMessage(const char* chat_id, const char* text, const char* 
 			strcat(msg,"\"}");
         }
         else
-            _println("[Bot] Warning: Invalid parse_mode provided.");
+            _printfE("Warning: Invalid parse_mode provided.");
     }
     // Remove last brace and append disable_web_page_preview value if true
     if(disable_web_page_preview)
@@ -280,17 +299,16 @@ uint8_t uTLGBot::sendMessage(const char* chat_id, const char* text, const char* 
     }
 
     // Send the request
-    _println(F("[Bot] Trying to send message request..."));
+    _println(F("Trying to send message request..."));
     _println(F("Mesage to send:"));
     _println(msg);
-    _println("");
     request_result = tlg_post(API_CMD_SEND_MSG, msg, strlen(msg), _buffer, 
         HTTP_MAX_RES_LENGTH);
     
     // Check if request has fail
     if(request_result == false)
     {
-        _println(F("[Bot] Command fail, no response received."));
+        _printfE(F("Command fail, no response received."));
 
         // Disconnect from telegram server
         if(is_connected())
@@ -300,9 +318,8 @@ uint8_t uTLGBot::sendMessage(const char* chat_id, const char* text, const char* 
     }
 
     // Parse and check response
-    _println(F("\n[Bot] Response received:"));
+    _println(F("Response received:"));
     _println(_buffer);
-    _println(" ");
 
     // Disconnect from telegram server
     if(_dont_keep_connection && is_connected())
@@ -327,22 +344,23 @@ uint8_t uTLGBot::getUpdates(void)
     }
 
     // Create HTTP Body request data (Note that we limit messages to 1 and just allow text messages)
-    static char msg[HTTP_MAX_BODY_LENGTH];
+    //static char msg[HTTP_MAX_BODY_LENGTH];
     snprintf_P(msg, HTTP_MAX_BODY_LENGTH, PSTR("{\"offset\":%d, \"limit\":1, " \
         "\"timeout\":%d, \"allowed_updates\":[\"message\"]}"), (int)_last_received_msg,
         (int)TELEGRAM_LONG_POLL);
 
     // Send the request
-    _println(F("[Bot] Trying to send getUpdates request..."));
-    _printf("[Bot] get Update Message %s\r\n",msg);
+    _println(F("Trying to send getUpdates request..."));
+    _printf("%s get Update [size: %d]  Message %s\r\n" ,getTime(), strlen(msg), msg);
 
     request_result = tlg_post(API_CMD_GET_UPDATES, msg, strlen(msg), _buffer, 
         HTTP_MAX_RES_LENGTH, HTTP_WAIT_RESPONSE_TIMEOUT+(TELEGRAM_LONG_POLL*1000));
+    _printf("%s reseived request [size: %d]  request %s\r\n" ,getTime(), strlen(_buffer), _buffer);
     
     // Check if request has fail
     if(request_result == false)
     {
-        _println(F("[Bot] Command fail, no response received."));
+        _printfW(F("Command fail, no response received."));
 
         // Disconnect from telegram server
         if(is_connected())
@@ -371,7 +389,7 @@ uint8_t uTLGBot::getUpdates(void)
     // Check if response is empty (there is no message)
     if(strlen(ptr_response) == 0)
     {
-        _println(F("[Bot] There is not new message."));
+        _println(F("There is not new message."));
 
         // Disconnect from telegram server
         if(_dont_keep_connection && is_connected())
@@ -381,7 +399,7 @@ uint8_t uTLGBot::getUpdates(void)
     }
     else
     {
-        _println(F("\n[Bot] Response received:"));
+        _println(F("Response received:"));
         _println(ptr_response);
         _println(" ");
     }
@@ -405,7 +423,7 @@ uint8_t uTLGBot::getUpdates(void)
         MAX_JSON_ELEMENTS);
     if(num_elements == 0)
     {
-        _println(F("[Bot] Error: Bad JSON sintax from received response."));
+        _printfE(F("Error: Bad JSON sintax from received response."));
 
         // Ignore this message that can't be readed and increase counter to ask for the next one
         _last_received_msg = _last_received_msg + 1;
@@ -481,7 +499,7 @@ uint8_t uTLGBot::getUpdates(void)
         num_subelements = json_parse_str(_json_value_str, strlen(_json_value_str), 
             _json_subelements, MAX_JSON_SUBELEMENTS);
         if(num_subelements == 0)
-            _println(F("[Bot] Error: Bad JSON sintax in \"from\" element."));
+            _printfE(F("Error: Bad JSON sintax in \"from\" element."));
         else
         {
             // Check and get value of key: id
@@ -602,7 +620,7 @@ uint8_t uTLGBot::getUpdates(void)
         num_subelements = json_parse_str(_json_value_str, strlen(_json_value_str), 
             _json_subelements, MAX_JSON_ELEMENTS);
         if(num_subelements == 0)
-            _println(F("[Bot] Error: Bad JSON sintax in \"from\" element."));
+            _printfE(F("Error: Bad JSON sintax in \"from\" element."));
         else
         {
             // Check and get value of key: id
@@ -753,7 +771,7 @@ uint8_t uTLGBot::tlg_get(const char* command, char* response, const size_t respo
     if(pos == -1)
     {
         // Clear response if unexpected response
-        _println(F("[Bot] Unexpected response."));
+        _printfW(F("Unexpected response."));
         memset(response, '\0', response_len);
         return false;
     }
@@ -765,7 +783,7 @@ uint8_t uTLGBot::tlg_get(const char* command, char* response, const size_t respo
     if(pos == -1)
     {
         // Clear response if unexpected response
-        _println(F("[Bot] Unexpected response."));
+        _printfW(F("Unexpected response."));
         memset(response, '\0', response_len);
         return false;
     }
@@ -775,7 +793,7 @@ uint8_t uTLGBot::tlg_get(const char* command, char* response, const size_t respo
     if(strncmp(response, "true", strlen("true")) != 0)
     {
         // Clear response due bad request response ("ok" != true)
-        _println(F("[Bot] Bad request."));
+        _printfE(F("Bad request."));
         memset(response, '\0', response_len);
         return false;
     }
@@ -787,7 +805,7 @@ uint8_t uTLGBot::tlg_get(const char* command, char* response, const size_t respo
     if(pos == -1)
     {
         // Clear response if unexpected response
-        _println(F("[Bot] Unexpected response."));
+        _printfW(F("Unexpected response."));
         memset(response, '\0', response_len);
         return false;
     }
@@ -829,7 +847,7 @@ uint8_t uTLGBot::tlg_post(const char* command, const char* body, const size_t bo
     if(pos == -1)
     {
         // Clear response if unexpected response
-        _println(F("[Bot] Unexpected response."));
+        _printfE(F("Unexpected response."));
         memset(response, '\0', response_len);
         return false;
     }
@@ -841,7 +859,7 @@ uint8_t uTLGBot::tlg_post(const char* command, const char* body, const size_t bo
     if(pos == -1)
     {
         // Clear response if unexpected response
-        _println(F("[Bot] Unexpected response."));
+        _printfE(F("Unexpected response."));
         memset(response, '\0', response_len);
         return false;
     }
@@ -851,7 +869,7 @@ uint8_t uTLGBot::tlg_post(const char* command, const char* body, const size_t bo
     if(strncmp(response, "true", strlen("true")) != 0)
     {
         // Clear response due bad request response ("ok" != true)
-        _println(F("[Bot] Bad request."));
+        _printfW(F("Bad request."));
         memset(response, '\0', response_len);
         return false;
     }
@@ -863,7 +881,7 @@ uint8_t uTLGBot::tlg_post(const char* command, const char* body, const size_t bo
     if(pos == -1)
     {
         // Clear response if unexpected response
-        _println(F("[Bot] Unexpected response."));
+        _printfW(F("Unexpected response."));
         memset(response, '\0', response_len);
         return false;
     }
@@ -917,18 +935,12 @@ uint32_t uTLGBot::json_parse_str(const char* json_str, const size_t json_str_len
     num_elements = jsmn_parse(&json_parser, json_str, json_str_len, json_tokens, json_tokens_len);
     if(num_elements < 0)
     {
-#if defined(ARDUINO) // ESP32 Arduino Framework
-        _print(F("Can't parse JSON data. Code "));
-        _println(num_elements);
-        _println();
-#else
-        _printf(F("Can't parse JSON data. Code %d\n"), num_elements);
-#endif
+        _printfE(F("Can't parse JSON data. Code %d"), num_elements);
         return 0;
     }
     if((num_elements == 0) || (json_tokens[0].type != JSMN_OBJECT))
     {
-        _println(F("Can't parse JSON data (invalid sintax?)."));
+        _printfE(F("Can't parse JSON data (invalid sintax?)."));
         return 0;
     }
 
@@ -979,7 +991,7 @@ uint8_t uTLGBot::json_get_key_value(const char* key, const char* json_str, jsmnt
     size_t key_position = json_has_key(json_str, tokens, num_tokens, key);
     if(key_position == 0)
     {
-        _println(F("No key found inside json."));
+        _printfW(F("No key found inside json."));
         return false;
     }
     else

@@ -21,6 +21,7 @@
 #include <sys/_stdint.h>
 #include <task.h>
 #include <cstdio>
+#include "esp_log.h"
 
 /**************************************************************************************************/
 
@@ -30,9 +31,16 @@
 #define _millis_setup() 
 #define _millis() (unsigned long)(esp_timer_get_time()/1000)
 #define _delay(x) do { vTaskDelay(x/portTICK_PERIOD_MS); } while(0)
-#define _print(x) do { if(_debug) printf("%s", x); } while(0)
+/*#define _print(x) do { if(_debug) printf("%s", x); } while(0)
 #define _println(x) do { if(_debug) printf("%s\n", x); } while(0)
-#define _printf(...) do { if(_debug) printf(__VA_ARGS__); } while(0)
+#define _printf(...) do { if(_debug) printf(__VA_ARGS__); } while(0)*/
+
+#define _debug_level true
+static const char *TAG = "HTTPS";
+#define _println(x) do { if(_debug_level) 		ESP_LOGI(TAG, x); } while(0)
+#define _printf(...) do { if(_debug_level) 		ESP_LOGI(TAG,__VA_ARGS__); } while(0)
+#define _printfW(...) do { if(_debug_level) 	ESP_LOGW(TAG,__VA_ARGS__); } while(0)
+#define _printfE(...) do { if(_debug_level) 	ESP_LOGE(TAG,__VA_ARGS__); } while(0)
 
 #define F(x) x
 #define PSTR(x) x
@@ -72,17 +80,17 @@ int8_t MultiHTTPSClient::connect(const char* host, uint16_t port)
 {
     unsigned long t0, t1;
     int conn_status;
- 	_println(F("[HTTPS] Start reserving memory."));
+ 	_println(F("Start reserving memory."));
  	_delay(70);
     // Reserve memory for TLS (Warning, here we are dynamically reserving some memory in HEAP)
     _tls = (esp_tls*)calloc(1, sizeof(esp_tls_t));
-    _printf("sizeof ESP_TLS_T %d \r\n", sizeof(esp_tls_t));
+    _printf("sizeof ESP_TLS_T %d.", sizeof(esp_tls_t));
     if(!_tls)
     {
-        _println(F("[HTTPS] Error: Cannot reserve memory for TLS."));
+        _printfE(F("Error: Cannot reserve memory for TLS."));
         return false;
     }
-	_println(F("[HTTPS] Memory reserved."));
+	_println(F("Memory reserved."));
     t0 = _millis();
     conn_status = 0;
     while(conn_status == 0)
@@ -102,7 +110,7 @@ int8_t MultiHTTPSClient::connect(const char* host, uint16_t port)
         // Check for timeout
         if(t1-t0 >= HTTP_CONNECT_TIMEOUT)
         {
-            _println(F("[HTTPS] Error: Can't connect to server (connection timeout)."));
+            _printfE(F("Error: Can't connect to server (connection timeout)."));
             break;
         }
 
@@ -112,7 +120,7 @@ int8_t MultiHTTPSClient::connect(const char* host, uint16_t port)
             continue;
         else if(conn_status == -1) // Connection Fail
         {
-            _println(F("[HTTPS] Error: Can't connect to server (connection fail)."));
+            _printfE(F("Error: Can't connect to server (connection fail)."));
             break;
         }
         else if(conn_status == 1) // Connection Success
@@ -168,17 +176,17 @@ uint8_t MultiHTTPSClient::get(const char* uri, const char* host, char* response,
             "\r\n\r\n"), uri, host);
 
     // Send request
-    _printf(F("HTTP request to send: %s\n"), request);
+    _printf(F("HTTP request to send: %s"), request);
     if(write(request) != strlen(request))
     {
-        _println(F("[HTTPS] Error: Incomplete HTTP request sent (sent less bytes than expected)."));
+        _printfE(F("Error: Incomplete HTTP request sent (sent less bytes than expected)."));
         return 1;
     }
-    _println(F("[HTTPS] GET request successfully sent."));
+    _printf(F("GET request successfully sent."));
     memset(response, '\0', response_len);
 
     // Wait and read response
-    _println(F("[HTTPS] Waiting for response..."));
+    _println(F("Waiting for response..."));
     t0 = _millis();
     while(true)
     {
@@ -196,14 +204,14 @@ uint8_t MultiHTTPSClient::get(const char* uri, const char* host, char* response,
         // Check for timeout
         if(t1-t0 >= response_timeout)
         {
-            _println(F("[HTTPS] Error: No response from server (wait response timeout)."));
+            _printfE(F("Error: No response from server (wait response timeout)."));
             return 2;
         }
 
         // Check for response
         if(read(response, response_len))
         {
-            _println(F("[HTTPS] Response successfully received."));
+            _printfE(F("Response successfully received."));
             break;
         }
 
@@ -224,7 +232,7 @@ uint8_t MultiHTTPSClient::post(const char* uri, const char* host, const char* bo
     // Lets use response buffer for make the request first (for the sake of save memory)
     char* request = response;
     unsigned long t0, t1;
-    _printf(F("[https] responce len %d, bodyLen - %d"), response_len, (int)body_len);
+    _printf(F("responce len %d, bodyLen - %d"), response_len, (int)body_len);
     _delay(200);
     // Clear response buffer and create request
     // Note that we use specific header values for Telegram requests
@@ -237,14 +245,14 @@ uint8_t MultiHTTPSClient::post(const char* uri, const char* host, const char* bo
     _printf(F("HTTP request to send: %s\n"), request);
     if(write(request) != strlen(request))
     {
-        _println(F("[HTTPS] Error: Incomplete HTTP request sent (sent less bytes than expected)."));
+        _printfE(F("Error: Incomplete HTTP request sent (sent less bytes than expected)."));
         return 1;
     }
-    _println(F("[HTTPS] POST request successfully sent."));
+    _println(F("POST request successfully sent."));
     memset(response, '\0', response_len);
 
     // Wait and read response
-    _println(F("[HTTPS] Waiting for response..."));
+    _println(F("Waiting for response..."));
     t0 = _millis();
     while(true)
     {
@@ -262,14 +270,14 @@ uint8_t MultiHTTPSClient::post(const char* uri, const char* host, const char* bo
         // Check for timeout
         if(t1-t0 >= response_timeout)
         {
-            _println(F("[HTTPS] Error: No response from server (timeout)."));
+            _printfE(F("Error: No response from server (timeout)."));
             return 2;
         }
 
         // Check for response
         if(read(response, response_len))
         {
-            _println(F("[HTTPS] Response successfully received."));
+            _println(F("Response successfully received."));
             break;
         }
 
@@ -277,7 +285,7 @@ uint8_t MultiHTTPSClient::post(const char* uri, const char* host, const char* bo
         _delay(10);
     }
 
-    _printf(F("[HTTPS] Response: %s\n\n"), response);
+    _printf(F("Response: %s\n\n"), response);
     
     return 0;
 }
@@ -320,7 +328,7 @@ size_t MultiHTTPSClient::write(const char* request)
             written_bytes += ret;
         else if(ret != MBEDTLS_ERR_SSL_WANT_READ  && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
         {
-            _printf(F("[HTTPS] Client write error 0x%x\n"), ret);
+            _printfE(F("Client write error 0x%x\n"), ret);
             break;
         }
     } while(written_bytes < strlen(request));
@@ -340,12 +348,12 @@ bool MultiHTTPSClient::read(char* response, const size_t response_len)
 
     if(ret < 0)
     {
-        _printf(F("[HTTPS] Client read error -0x%x\n"), -ret);
+        _printfE(F("Client read error -0x%x\n"), -ret);
         return false;
     }
     if(ret == 0)
     {
-        _printf(F("[HTTPS] Lost connection while client was reading.\n"));
+        _printfE(F("Lost connection while client was reading.\n"));
         return false;
     }
     

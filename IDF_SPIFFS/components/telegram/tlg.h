@@ -10,6 +10,6 @@
 
 
 void tlg_task(void *pvParameter);
-
+void tlgInit();
 
 #endif /* COMPONENTS_TELEGRAM_TLG_H_ */

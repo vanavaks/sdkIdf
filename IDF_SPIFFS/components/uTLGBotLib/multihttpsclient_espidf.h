@@ -39,7 +39,7 @@
 #define HTTP_CONNECT_TIMEOUT 10000
 
 // HTTP response wait timeout (ms)
-#define HTTP_WAIT_RESPONSE_TIMEOUT 3000
+#define HTTP_WAIT_RESPONSE_TIMEOUT 1000	//10000
 
 // Maximum HTTP GET and POST data lenght
 #define HTTP_MAX_URI_LENGTH 128

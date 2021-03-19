@@ -104,7 +104,7 @@ static void register_restart()
 
 static int free_mem(int argc, char **argv)
 {
-    printf("%d\n", esp_get_free_heap_size());
+	ESP_LOGI(TAG, "%d\n", esp_get_free_heap_size());
     return 0;
 }
 

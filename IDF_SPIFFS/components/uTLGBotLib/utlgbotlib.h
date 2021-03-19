@@ -50,25 +50,25 @@
 #define TELEGRAM_API_LENGTH (TELEGRAM_SERVER_LENGTH + TOKEN_LENGTH)
 
 // Telegram getUpdate Long Poll value (s)
-#define TELEGRAM_LONG_POLL 10
+#define TELEGRAM_LONG_POLL 3	//10
 
 // JSON Max values length
-#define MAX_JSON_STR_LEN 1024
-#define MAX_JSON_SUBVAL_STR_LEN 512
-#define MAX_JSON_ELEMENTS 128
-#define MAX_JSON_SUBELEMENTS 64
+#define MAX_JSON_STR_LEN 			1024
+#define MAX_JSON_SUBVAL_STR_LEN 	512
+#define MAX_JSON_ELEMENTS 			128
+#define MAX_JSON_SUBELEMENTS 		64
 
 // Telegram data types Max values length
-#define MAX_ID_LENGTH 24
-#define MAX_USER_LENGTH 32
-#define MAX_USERNAME_LENGTH 32
-#define MAX_LANGUAGE_CODE_LENGTH 8
-#define MAX_CHAT_TYPE_LENGTH 16
-#define MAX_CHAT_TITLE_LENGTH 32
+#define MAX_ID_LENGTH 				24
+#define MAX_USER_LENGTH 			32
+#define MAX_USERNAME_LENGTH 		32
+#define MAX_LANGUAGE_CODE_LENGTH 	8
+#define MAX_CHAT_TYPE_LENGTH 		16
+#define MAX_CHAT_TITLE_LENGTH 		32
 #define MAX_CHAT_DESCRIPTION_LENGTH 128
-#define MAX_URL_LENGTH 64
-#define MAX_STICKER_NAME 32
-#define MAX_TEXT_LENGTH 1024
+#define MAX_URL_LENGTH 				64
+#define MAX_STICKER_NAME 			32
+#define MAX_TEXT_LENGTH 			1024
 
 /**************************************************************************************************/
 

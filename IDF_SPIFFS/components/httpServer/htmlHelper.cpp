@@ -13,7 +13,7 @@
 #include "http.h"
 #define TAG "html"
 
-#define HTML_DEBUG
+//#define HTML_DEBUG
 #ifdef HTML_DEBUG
 #define HTML_LOGD(tag, format, ...) ESP_LOGI(tag, format, ##__VA_ARGS__)
 #else
@@ -168,7 +168,7 @@ err_t sendConfigContent(httpd_req_t *req, http_category_t* cat){ //char* title, 
 
 	if((err = sendSideBar(req)) !=ESP_OK) return err;
 
-	char buff[2048]{0}; //-------проверять размер буфера и увеличивать при необходимости
+	char buff[1524]{0}; //-------проверять размер буфера и увеличивать при необходимости
 	strcat(buff, "<form action=\"");
 	strcat(buff, cat->url);
 	strcat(buff, "\" method=\"POST\"> <div><h2> ");

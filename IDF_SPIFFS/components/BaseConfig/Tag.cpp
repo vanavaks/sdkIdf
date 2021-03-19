@@ -378,6 +378,7 @@ void Tag::save() {
 }
 
 void Tag::Print(){
+#if 0
 	printf("Tag: category - %s, name - %s, ",prop->category , prop->KeyName);
 	if(prop->type == TAG_STR) printf("type - str, val = %s, def val = %s", value.asstr , prop->val.asstr);
 	else if(prop->type == TAG_UI32) printf("type - ui32, val = %d, def val = %d, ", value.asui32, prop->val.asui32);
@@ -386,6 +387,7 @@ void Tag::Print(){
 	else if(prop->type == TAG_FLOAT) printf("type - float, val = %f, def val = %f, ", value.asfloat, prop->val.asfloat);
 	else if(prop->type == TAG_BOOL) printf("type - bool, val = %d, def val = %d, ", value.asbool, prop->val.asbool);
 	printf("arr index - %d, size - %d \r\n", index, this->size());
+#endif
 }
 
 void Tag::PrintAdr(){

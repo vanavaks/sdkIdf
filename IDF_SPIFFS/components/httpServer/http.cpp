@@ -277,4 +277,15 @@ void http_startWebServer(){
 	server = start_webserver();
 }
 
+void http_stopWebServ(){
+	ESP_LOGI(TAG,"Heap before deleting web server%d\n", esp_get_free_heap_size());
+	stop_webserver(server);
+	ESP_LOGI(TAG,"Heap after deleting web server%d\n", esp_get_free_heap_size());
+}
+
+void http_strtWebServ(){
+	ESP_LOGI(TAG,"Heap before creating web server%d\n", esp_get_free_heap_size());
+	server = start_webserver();
+	ESP_LOGI(TAG,"Heap after creating web server%d\n", esp_get_free_heap_size());
+}
 

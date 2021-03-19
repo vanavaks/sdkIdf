@@ -34,25 +34,32 @@ extern "C" void app_main(void) {
 
 	ESP_LOGI(tagMain, "Event loop initialization");
 	ESP_ERROR_CHECK(esp_event_loop_create_default());
+	ESP_ERROR_CHECK(esp_event_loop_init(nullptr, nullptr));
 
-	ESP_LOGI(tagMain, "Starting telegram task");
-	xTaskCreate(&tlg_task, "tlg_task", 20000, NULL, 5, NULL);
+
 
 	ESP_LOGI(tagMain, "Coneecting to wifi");
 	ESP_ERROR_CHECK(wifi_begin());
 
 	//-----------register_OtaUpdate();
 
-	//ESP_LOGI(tagMain, "Connecting to SNTP server");
-	//sntp_start();
-
-	//ESP_LOGI(tagMain, "Starting web server");
-	//http_startWebServer();
+	ESP_LOGI(tagMain, "Connecting to SNTP server");
+	sntp_start();
 
 
+
+
+	ESP_LOGI(tagMain, "Starting web server");
+	http_startWebServer();
+
+	vTaskDelay(2000/portTICK_PERIOD_MS);
+
+	ESP_LOGI(tagMain, "Starting telegram task");
+	//xTaskCreate(&tlg_task, "tlg_task", 16000, NULL, 6, NULL);
+	tlgInit();
 
 	ESP_LOGI(tagMain, "Starting console task");
-	//xTaskCreate(&cmd_task, "cmd_task", 8000, NULL, 5, NULL);
+	xTaskCreate(&cmd_task, "cmd_task", 2000, NULL, 5, NULL);
 }
 
 
