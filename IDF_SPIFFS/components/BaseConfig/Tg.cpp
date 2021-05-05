@@ -180,7 +180,7 @@ void Tg::initNVS() {
 		ESP_LOGE(TG, "if no partition with label nvs is found in the partition table");
 	}
 	else if (err == ESP_OK){
-
+		ESP_LOGI(TG, "Nvs_init done");
 	}
 	else{
 		ESP_ERROR_CHECK(err);

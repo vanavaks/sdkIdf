@@ -42,11 +42,11 @@
 #define HTTP_WAIT_RESPONSE_TIMEOUT 1000	//10000
 
 // Maximum HTTP GET and POST data lenght
-#define HTTP_MAX_URI_LENGTH 128
+#define HTTP_MAX_URI_LENGTH 200
 #define HTTP_MAX_BODY_LENGTH 1024
 #define HTTP_MAX_GET_LENGTH HTTP_MAX_URI_LENGTH + 128
 #define HTTP_MAX_POST_LENGTH HTTP_MAX_URI_LENGTH + HTTP_MAX_BODY_LENGTH
-#define HTTP_MAX_RES_LENGTH 4096
+#define HTTP_MAX_RES_LENGTH 1024
 
 /**************************************************************************************************/
 

@@ -68,7 +68,7 @@ char* getTime(){
 }
 
 // TLGBot constructor, initialize and setup secure client with telegram cert and get the token
-uTLGBot::uTLGBot(const char* token, const bool dont_keep_connection)
+uTLGBot::uTLGBot(Tag* token, const bool dont_keep_connection)
 {
 #if defined(ESP_IDF)
 	char c;
@@ -88,8 +88,9 @@ uTLGBot::uTLGBot(const char* token, const bool dont_keep_connection)
     _client = new MultiHTTPSClient((char*)cert_https_api_telegram_org);
 #endif
 
-    snprintf(_token, TOKEN_LENGTH, "%s", token);
-    snprintf(_tlg_api, TELEGRAM_API_LENGTH, "/bot%s", _token);
+    _token = token;
+    //snprintf(_token, TOKEN_LENGTH, "%s", token);
+    //snprintf(_tlg_api, TELEGRAM_API_LENGTH, "/bot%s",token);
     memset(_buffer, '\0', HTTP_MAX_RES_LENGTH);
     memset(_json_value_str, '\0', MAX_JSON_STR_LEN);
     memset(_json_subvalue_str, '\0', MAX_JSON_SUBVAL_STR_LEN);
@@ -208,8 +209,8 @@ uint8_t uTLGBot::getMe(void)
     }
 
     // Parse and check response
-    _println(F("Response received:"));
-    _println(_buffer);
+
+    _printfE("Response received: %s \r\n Length: %d", _buffer, strlen(_buffer));
 
     // Disconnect from telegram server
     if(_dont_keep_connection && is_connected())
@@ -318,8 +319,7 @@ uint8_t uTLGBot::sendMessage(const char* chat_id, const char* text, const char* 
     }
 
     // Parse and check response
-    _println(F("Response received:"));
-    _println(_buffer);
+    _printfE(F("Response received: %s \r\n Length: %d"), _buffer, strlen(_buffer));
 
     // Disconnect from telegram server
     if(_dont_keep_connection && is_connected())
@@ -355,7 +355,7 @@ uint8_t uTLGBot::getUpdates(void)
 
     request_result = tlg_post(API_CMD_GET_UPDATES, msg, strlen(msg), _buffer, 
         HTTP_MAX_RES_LENGTH, HTTP_WAIT_RESPONSE_TIMEOUT+(TELEGRAM_LONG_POLL*1000));
-    _printf("%s reseived request [size: %d]  request %s\r\n" ,getTime(), strlen(_buffer), _buffer);
+    _printfE("%s reseived request [size: %d]  request %s\r\n" ,getTime(), strlen(_buffer), _buffer);
     
     // Check if request has fail
     if(request_result == false)
@@ -759,7 +759,7 @@ uint8_t uTLGBot::tlg_get(const char* command, char* response, const size_t respo
     uint32_t i = 0;
 
     // Create URI and send GET request
-    snprintf_P(uri, HTTP_MAX_URI_LENGTH, PSTR("%s/%s"), _tlg_api, command);
+    snprintf_P(uri, HTTP_MAX_URI_LENGTH, PSTR("/bot%s/%s"), _token->getStr(), command);
     if(_client->get(uri, TELEGRAM_HOST, response, response_len, response_timeout) > 0)
         return false;
 
@@ -833,7 +833,7 @@ uint8_t uTLGBot::tlg_post(const char* command, const char* body, const size_t bo
     uint32_t i = 0;
 
     // Create URI and send POST request
-    snprintf_P(uri, HTTP_MAX_URI_LENGTH, PSTR("%s/%s"), _tlg_api, command);
+    snprintf_P(uri, HTTP_MAX_URI_LENGTH, PSTR("/bot%s/%s"), _token->getStr(), command);
     if(_client->post(uri, TELEGRAM_HOST, body, body_len, response, response_len, response_timeout) > 0)
     {
         return false;
@@ -841,7 +841,7 @@ uint8_t uTLGBot::tlg_post(const char* command, const char* body, const size_t bo
 
     // Remove last character
     response[strlen(response)-1] = '\0';
-
+    _printfE("Post responce len %d", strlen(response));
     // Check and remove response header (just keep response body)
     pos = cstr_get_substr_pos_end(response, strlen(response), "\r\n\r\n", strlen("\r\n\r\n"));
     if(pos == -1)

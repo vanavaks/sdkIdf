@@ -25,7 +25,7 @@ char defString[] = " ";
 uint16_t Tag::indHead = 0;
 nvs_handle Tag::handle = 0;
 uint32_t Tag::saveCnt = 0;
-bool Tag::isInit;
+bool Tag::isInit = 0;
 Tag* Tag::arr[CONFIG_TAG_ARR_SIZE];
 
 
@@ -78,9 +78,11 @@ err1_t Tag::set(const char* key, const char* value) {
 	else if(tg->prop->type == TAG_BOOL){	/* WE MUCT CHACK TRUE VALUE AND FAULSE VALUE */
 		TAG_LOGD("tag is bool, val = '%s', bool true string is '%s", value, TAG_TRUE_STR);
 		if(!strcmp(value, TAG_TRUE_STR)){	/* value is true */
-			tg->value.asbool = true;
+			tg->setBL(true);
+			//tg->value.asbool = true;
 		}else{
-			tg->value.asbool = false;
+			tg->setBL(false);
+			//tg->value.asbool = false;
 		}
 	}
 	else if(tg->prop->type == TAG_FLOAT){
@@ -186,6 +188,7 @@ uint32_t Tag::getUI32(){
 		return 0;
 	}
 }
+	//handling of type errors  and more others better to make here
 
 bool Tag::getBL() {
 	if(prop->type == TAG_BOOL) return value.asbool;
@@ -266,9 +269,9 @@ err1_t Tag::get(char* key, uint32_t* val) {
 //==================================== NVS ==============================================//
 
 void Tag::initNVS() {
-
-	esp_err_t err = nvs_flash_init();
 	ESP_LOGI(tag, "Nvs_flash_init starting");
+	esp_err_t err = nvs_flash_init();
+
 	if (err == ESP_ERR_NVS_NO_FREE_PAGES) {
 		ESP_LOGW(tag, "nvs_flash_init failed (0x%x), erasing partition and retrying", err);
 		ESP_ERROR_CHECK(nvs_flash_erase());
@@ -278,15 +281,16 @@ void Tag::initNVS() {
 		ESP_LOGE(tag, "if no partition with label nvs is found in the partition table");
 	}
 	else if (err == ESP_OK){
-
+		ESP_LOGI(tag, "Nvs_init done");
 	}
 	else{
+		ESP_LOGW(tag, "nvs_flash_init failed err (0x%x)", err);
 		ESP_ERROR_CHECK(err);
 	}
-
+	/*
 	if(err == ESP_OK){
 		ESP_ERROR_CHECK(nvs_open(nsDef, NVS_READWRITE, &handle));
-	}
+	}*/
 }
 
 void Tag::read() {
@@ -342,8 +346,11 @@ void Tag::read() {
 
 	switch (err){
 
-		case ESP_ERR_NVS_INVALID_NAME:
+		/*case ESP_ERR_NVS_INVALID_NAME:
 			ESP_LOGW(tag, "Reading absent parameter in NVS %s, err= %d",prop->KeyName, err);
+			break;*/
+		case ESP_ERR_NVS_NOT_FOUND:
+			ESP_LOGI(tag,"Requested key doesn't existin NVS %s, err= %d",prop->KeyName, err);
 			break;
 		case ESP_OK:
 			break;
@@ -352,6 +359,12 @@ void Tag::read() {
 		;
 	}
 	close();
+}
+
+void Tag::setBL(bool val) {
+	if(this->prop->type != TAG_BOOL) {ESP_ERROR_CHECK(ESP_ERR_TYPE);}
+	value.asbool = val;
+	if(prop->saveble) save();
 }
 
 void Tag::save() {
@@ -374,6 +387,7 @@ void Tag::save() {
 	}else {ESP_ERROR_CHECK(ESP_ERR_TYPE); saveCnt--;}
 
 	if(err != ESP_OK) ESP_LOGW(tag, "saving parameter %s, err= %d",prop->KeyName, err);
+	else ESP_LOGI(tag, "saved");
 	close();
 }
 
@@ -487,6 +501,8 @@ Tag* Tag::getNextByCategory(uint16_t* index, const char* cat) {
 				*index = i;
 				return Tag::arr[i];
 			}
+			if (i == indHead-1) *index = i;
+
 			else{TAG_LOGD("Tag not equal -> chack next");}
 		}else{ESP_LOGE(tag," tag ind - %d have NULL pointer", i);}
 	}

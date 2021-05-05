@@ -32,7 +32,7 @@
 #include "multihttpsclient.h"
 #include "jsmn.h"
 #include "tlgcert.h"
-
+#include "Tag.h"
 /**************************************************************************************************/
 
 /* Constants */
@@ -56,7 +56,7 @@
 #define MAX_JSON_STR_LEN 			1024
 #define MAX_JSON_SUBVAL_STR_LEN 	512
 #define MAX_JSON_ELEMENTS 			128
-#define MAX_JSON_SUBELEMENTS 		64
+#define MAX_JSON_SUBELEMENTS 		32
 
 // Telegram data types Max values length
 #define MAX_ID_LENGTH 				24
@@ -135,7 +135,7 @@ class uTLGBot
         tlg_type_message received_msg;
 
         // Public Methods
-        uTLGBot(const char* token, const bool dont_keep_connection=false);
+        uTLGBot(Tag* token, const bool dont_keep_connection=false);
         #if defined(WIN32) || defined(_WIN32) || defined(__linux__) // Native (Windows, Linux)
             ~uTLGBot(void);
         #endif
@@ -152,8 +152,9 @@ class uTLGBot
     private:
         // Private Attributtes
         MultiHTTPSClient* _client;
-        char _token[TOKEN_LENGTH];
-        char _tlg_api[TELEGRAM_API_LENGTH];
+        Tag* _token;
+        //char _token[TOKEN_LENGTH];
+        //char _tlg_api[TELEGRAM_API_LENGTH];
         char _buffer[HTTP_MAX_RES_LENGTH];
         jsmntok_t _json_elements[MAX_JSON_ELEMENTS];
         jsmntok_t _json_subelements[MAX_JSON_SUBELEMENTS];

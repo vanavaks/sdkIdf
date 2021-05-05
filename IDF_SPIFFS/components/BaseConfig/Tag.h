@@ -17,11 +17,12 @@
 extern "C" {
 #endif
 
-#define Pstr(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_STR, .saveble = (_savebl), .val = { .asstr = (char*)(_def) }}
-#define Pui32(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_UI32, .saveble = (_savebl), .val = { .asi32 = (int32_t)(_def) }}
-#define Pbool(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_BOOL, .saveble = (_savebl), .val = { .asbool = (bool)(_def) }}
-#define TagIp(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_IP, .saveble = (_savebl), .val = { .asui32 = (uint32_t)(_def) }}
-#define TagTime(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_Time, .saveble = (_savebl), .val = { .asi32 = (int32_t)(_def) }}
+#define Pstr(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_STR, .saveble = (_savebl), .val = { .asstr = (char*)(_def) }, .args = NULL}
+#define Pui32(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_UI32, .saveble = (_savebl), .val = { .asi32 = (int32_t)(_def) }, .args = NULL}
+#define Pbool(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_BOOL, .saveble = (_savebl), .val = { .asbool = (bool)(_def) }, .args = NULL}
+#define TagIp(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_IP, .saveble = (_savebl), .val = { .asui32 = (uint32_t)(_def) }, .args = NULL}
+#define TagTime(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_Time, .saveble = (_savebl), .val = { .asi32 = (int32_t)(_def) }, .args = NULL}
+#define Pflt(_key, _cat, _savebl, _def) 	{.KeyName = (_key), .category = (_cat), .type = TAG_FLOAT, .saveble = (_savebl), .val = { .asfloat = (float)(_def) }, .args = NULL}
 
 enum PAR_openMode{
 	openOnce,
@@ -39,9 +40,9 @@ enum PAR_openMode{
 #endif
 
 
-#define TAG_VAL_STR_MAX_SIZE 			20
-#define TAG_VAL_STR_MAX_SIZE_STR 		"20"
-#define CHAR_BUFF_SIZE 20
+#define TAG_VAL_STR_MAX_SIZE 			64
+#define TAG_VAL_STR_MAX_SIZE_STR 		"64"
+#define CHAR_BUFF_SIZE 64
 
 #define ESP_ERR_TAG_BASE                0x4200                     /*!< Starting number of error codes */
 #define ESP_ERR_TAG_OK     				0
@@ -56,6 +57,7 @@ enum PAR_openMode{
 #define SAVE_NVS_DEF_VAL
 enum paramtype_t : uint8_t { TAG_BOOL, TAG_I8, TAG_UI8, TAG_I16, TAG_UI16, TAG_I32, TAG_UI32, TAG_FLOAT, TAG_CHAR, TAG_STR, TAG_PSWD, TAG_IP, TAG_T };
 #define SAVEBLE true
+
 
 
 struct val_t{
@@ -73,12 +75,32 @@ struct val_t{
 	} ;
 };
 
+//TODO add parameter control (related to visual element).
+
+//TODO class category which include arr with category tags tree structure
+/*Tags will searching faster
+ *
+ *
+ * struct {
+ * 		char*	key;
+ * 		uint8_t size;
+ * 		Tag*  first;
+ * 		} category_t;
+ *
+ * 	arr[CAT_NUMS];
+ *
+ * 	from http setTagByCat(char* cat, char* key, char* val);
+ * 	if cat == NULL -> setTag(char* key, char* val)
+ *
+ */
+
 struct tagProp_t{
 	const char* KeyName;
 	const char* category;
 	paramtype_t type;
 	bool saveble;
 	val_t val;
+	void* args;
 	/*val_t defVal;
 	val_t minVal;
 	val_t maxVal;*/
@@ -117,6 +139,7 @@ public:
 	err1_t set(uint8_t val);
 	err1_t set(int32_t val);
 	err1_t set(float val);
+	virtual void setBL(bool val);
 
 	bool getBL();
 	uint8_t getUI8();

@@ -44,6 +44,8 @@ static ip4_addr_t s_ip_addr;
 static bool wifi_defConfig = false;
 
 static wifi_config_t wifi_config = { 0 }; //must be local
+static bool wifi_connected = false;
+static bool wifi_has_ip = false;
 
 #if 0
 #define CONFIG_EXAMPLE_WIFI_SSID "vanavaks"
@@ -192,10 +194,11 @@ if((dhcpcStatus == TCPIP_ADAPTER_DHCP_STOPPED && dhcpsStatus == TCPIP_ADAPTER_DH
 }
 
 
-static void on_wifi_disconnect(void *arg, esp_event_base_t event_base,
-                               int32_t event_id, void *event_data)
-{
+static void on_wifi_disconnect(void *arg, esp_event_base_t event_base,int32_t event_id, void *event_data){
+
     system_event_sta_disconnected_t *event = (system_event_sta_disconnected_t *)event_data;
+
+    wifi_connected = false;
 
     ESP_LOGI(TAG, "Wi-Fi disconnected, trying to reconnect...");
     if (event->reason == WIFI_REASON_BASIC_RATE_NOT_SUPPORT) {
@@ -212,23 +215,23 @@ static void on_wifi_disconnect(void *arg, esp_event_base_t event_base,
 		wifi_start(tag_WIFI_ssid2, tag_WIFI_pass2);
 		wifi_defConfig = false;
 	}
-    //ESP_ERROR_CHECK(esp_wifi_connect());
 }
 
-#ifdef CONFIG_EXAMPLE_CONNECT_IPV6
-static void on_wifi_connect(void *arg, esp_event_base_t event_base,
-                            int32_t event_id, void *event_data)
-{
-    tcpip_adapter_create_ip6_linklocal(TCPIP_ADAPTER_IF_STA);
-}
-#endif
 
-static void on_got_ip(void *arg, esp_event_base_t event_base,
-                      int32_t event_id, void *event_data)
-{
+static void on_wifi_connect(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data){
+	wifi_connected = true;
+}
+
+
+static void on_got_ip(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data){
+	wifi_has_ip = true;
     ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
     memcpy(&s_ip_addr, &event->ip_info.ip, sizeof(s_ip_addr));
     xEventGroupSetBits(s_connect_event_group, GOT_IPV4_BIT);
+}
+
+static void on_lost_ip(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data){
+	wifi_has_ip = false;
 }
 
 #ifdef CONFIG_EXAMPLE_CONNECT_IPV6
@@ -249,10 +252,6 @@ static void on_got_ipv6(void *arg, esp_event_base_t event_base,
 
 #endif // CONFIG_EXAMPLE_CONNECT_IPV6
 
-static void on_wifi_connect(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
-    //tcpip_adapter_create_ip6_linklocal(TCPIP_ADAPTER_IF_STA);
-}
 
 static void start(void)
 {
@@ -262,10 +261,7 @@ static void start(void)
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &on_wifi_disconnect, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &on_got_ip, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, &on_wifi_connect, NULL));
-#ifdef CONFIG_EXAMPLE_CONNECT_IPV6
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, &on_wifi_connect, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_GOT_IP6, &on_got_ipv6, NULL));
-#endif    
+	ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_LOST_IP, &on_lost_ip, NULL));
 
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     //wifi_config_t wifi_config = { 0 };
@@ -312,10 +308,8 @@ static void stop(void)
 
     ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &on_wifi_disconnect));
     ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &on_got_ip));
-#ifdef CONFIG_EXAMPLE_CONNECT_IPV6
-    ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_GOT_IP6, &on_got_ipv6));
     ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, &on_wifi_connect));
-#endif
+	ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_LOST_IP, &on_lost_ip));
 
     ESP_ERROR_CHECK(esp_wifi_deinit());
 }
@@ -349,11 +343,6 @@ esp_err_t wifi_connect(void)
     xEventGroupWaitBits(s_connect_event_group, CONNECTED_BITS, true, true, portMAX_DELAY);
     ESP_LOGI(TAG, "Connected to %s", s_connection_name);
     ESP_LOGI(TAG, "IPv4 address: " IPSTR, IP2STR(&s_ip_addr));
-#ifdef CONFIG_EXAMPLE_CONNECT_IPV6
-    ESP_LOGI(TAG, "IPv6 address: " IPV6STR, IPV62STR(s_ipv6_addr));
-#endif
-
-
     return ESP_OK;
 }
 
@@ -374,7 +363,6 @@ esp_err_t wifi_set_connection_info(const char *ssid, const char *passwd)
 {
     strncpy(s_connection_name, ssid, sizeof(s_connection_name));
     strncpy(s_connection_passwd, passwd, sizeof(s_connection_passwd));
-
     return ESP_OK;
 }
 
@@ -393,4 +381,9 @@ esp_err_t wifi_begin(){
 	Tag::printAll();
 
 	return wifi_connect();
+}
+
+bool wifi_is_connected(){
+	if(wifi_connected || wifi_has_ip) return true;
+	return false;
 }

@@ -16,17 +16,20 @@
 extern "C" {
 #endif
 
-typedef struct http_category_t{
+typedef struct {
 	const char* title;
 	const char* url;
 	const char* menuTitle;
 	const char* category;
-};
+	const char* butName;
+}http_category_t;
 
 err_t sendHtml(httpd_req_t *req);
 err_t sendNetHtml(httpd_req_t *req);
 err_t sendConfigContent(httpd_req_t *req, http_category_t* cat);
-
+err_t sendIOContent(httpd_req_t *req);
+err_t html_sendConfigContent(httpd_req_t *req, http_category_t* cat, uint8_t num);
+void html_init();
 #ifdef __cplusplus
 }
 #endif

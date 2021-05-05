@@ -12,7 +12,7 @@
 #include "Tag.h"
 #include "http.h"
 #define TAG "html"
-
+#define html_log_level ESP_LOG_INFO
 //#define HTML_DEBUG
 #ifdef HTML_DEBUG
 #define HTML_LOGD(tag, format, ...) ESP_LOGI(tag, format, ##__VA_ARGS__)
@@ -79,6 +79,8 @@ const char* html_sidebar = "<div id=\"sidebar\">\
 							<p><a href=\"b_author.html\">Config</a></p>\
 							<p><a href=\"ntp\">Ntp config</a></p>\
 							<p><a href=\"net\">Net config</a></p>\
+							<p><a href=\"tlg\">Telegram config</a></p>\\
+							<p><a href=\"io\">IO</a></p>\\
 							<p><a href=\"b_last.html\">Info</a></p>\
 							</div>";
 
@@ -91,7 +93,7 @@ const char* html_context = "<h2>Some information </h2>  <p>As part of the esp-op
 const char* html_net_context = "<h2>Network information </h2>  <p>Here will been network parameters</p>";
 const char* html_form_post = "<form action=\"net\" method=\"POST\">";
 const char* html_but_save = "<input type=\"submit\" class = \"buttonFlp\"  value=\"Сохранить\"></form>";
-
+const char* html_end_form = "</form>";
 
 void http_createNetParsList(char* buff, char* category);
 
@@ -160,6 +162,9 @@ err_t sendNetHtml(httpd_req_t *req){
 	return ESP_OK;
 }
 
+const char* cnt = "<div id=\"content\">";
+const char* cntEnd = "</div>";
+
 err_t sendConfigContent(httpd_req_t *req, http_category_t* cat){ //char* title, const char* category, const char* postUrl){
 	esp_err_t err;
 	if((err = httpd_resp_send_chunk(req, html_html_b, strlen(html_html_b))) !=ESP_OK) return err;
@@ -169,6 +174,7 @@ err_t sendConfigContent(httpd_req_t *req, http_category_t* cat){ //char* title, 
 	if((err = sendSideBar(req)) !=ESP_OK) return err;
 
 	char buff[1524]{0}; //-------проверять размер буфера и увеличивать при необходимости
+	if((err = httpd_resp_send_chunk(req, cnt, strlen(cnt))) !=ESP_OK) return err;
 	strcat(buff, "<form action=\"");
 	strcat(buff, cat->url);
 	strcat(buff, "\" method=\"POST\"> <div><h2> ");
@@ -177,17 +183,140 @@ err_t sendConfigContent(httpd_req_t *req, http_category_t* cat){ //char* title, 
 	http_createParsList(buff, cat->category);
 	if((err = httpd_resp_send_chunk(req, buff, strlen(buff))) !=ESP_OK) return err;
 	if((err = httpd_resp_send_chunk(req, html_but_save, strlen(html_but_save))) !=ESP_OK) return err;
+	if((err = httpd_resp_send_chunk(req, cntEnd, strlen(cntEnd))) !=ESP_OK) return err;
 
 	if((err = httpd_resp_send_chunk(req, html_footer, strlen(html_footer))) !=ESP_OK) return err;
 	if((err = httpd_resp_send_chunk(req, html_html_e, strlen(html_html_e))) !=ESP_OK) return err;
 	return ESP_OK;
 }
 
+#define HTML_FORM_BUFF_SIZE 2048 //1524
+/*
+err_t html_sendForm(httpd_req_t *req, const char* url, const char* title, const char* category, const char* butName){
+	esp_err_t err;
+	char buff[HTML_FORM_BUFF_SIZE]{0};
+	strcat(buff, "<form action=\"");
+	strcat(buff, url);
+	strcat(buff, "\" method=\"POST\"> <div><h2> ");
+	strcat(buff, title);
+	strcat(buff, " </h2></div>");
+	http_createParsList(buff, category);
+	if (butName != NULL){
+		strcat(buff, "<input type=\"submit\" class = \"buttonFlp\"  value=\"");
+		strcat(buff, butName);
+		strcat(buff, "\">");
+	}
+	strcat(buff, "</form>");
+	if((err = httpd_resp_send_chunk(req, buff, strlen(buff))) !=ESP_OK) return err;
+	return ESP_OK;
+}*/
 
+/* if butName == NULL -> commit button will not generated */
+typedef struct{
+	const char* url;
+	const char* title;
+	const char* category;
+	const char* butName = NULL;
+}html_form_t;
+
+/* form buffer is to mach in future try to send form partically */
+err_t html_sendForm(httpd_req_t *req, const html_form_t* data){
+	esp_err_t err;
+	char buff[HTML_FORM_BUFF_SIZE]{0};
+	strcat(buff, "<form action=\"");
+	strcat(buff, data->url);
+	strcat(buff, "\" method=\"POST\"> <div><h2> ");
+	strcat(buff, data->title);
+	strcat(buff, " </h2></div>");
+	http_createParsList(buff, data->category);
+	if (data->butName != NULL){
+		strcat(buff, "<input type=\"submit\" class = \"buttonFlp\"  value=\"");
+		strcat(buff, data->butName);
+		strcat(buff, "\">");
+	}
+	strcat(buff, "</form>");
+	if((err = httpd_resp_send_chunk(req, buff, strlen(buff))) !=ESP_OK) return err;
+	return ESP_OK;
+}
+
+/* form buffer is to mach in future try to send form partically */
+err_t html_sendForm(httpd_req_t *req, http_category_t* data){
+	esp_err_t err;
+	char buff[HTML_FORM_BUFF_SIZE]{0};
+	strcat(buff, "<form action=\"");
+	strcat(buff, data->url);
+	strcat(buff, "\" method=\"POST\"> <div><h2> ");
+	strcat(buff, data->title);
+	strcat(buff, " </h2></div>");
+	http_createParsList(buff, data->category);
+	if (data->butName != NULL){
+		strcat(buff, "<input type=\"submit\" class = \"buttonFlp\"  value=\"");
+		strcat(buff, data->butName);
+		strcat(buff, "\">");
+	}
+	strcat(buff, "</form>");
+	if((err = httpd_resp_send_chunk(req, buff, strlen(buff))) !=ESP_OK) return err;
+	return ESP_OK;
+}
+#if 0
+err_t sendIOContent(httpd_req_t *req){ //char* title, const char* category, const char* postUrl){
+	esp_err_t err;
+	if((err = httpd_resp_send_chunk(req, html_html_b, strlen(html_html_b))) !=ESP_OK) return err;
+	if((err = sendStyle(req)) !=ESP_OK) return err;
+	if((err = httpd_resp_send_chunk(req, html_header, strlen(html_header))) !=ESP_OK) return err;
+
+	if((err = sendSideBar(req)) !=ESP_OK) return err;
+
+	const html_form_t di_data = {.url = "/di", .title = "Digital inputs", .category = "DI"};
+	html_sendForm(req, &di_data);
+
+	const html_form_t do_data = {.url = "/do", .title = "Digital outputs", .category = "DO", .butName = "setDO"};
+	html_sendForm(req, &do_data);
+
+	const html_form_t ai_data = {.url = "/ai", .title = "Analog inputs", .category = "AI"};
+	html_sendForm(req, &ai_data);
+
+	const html_form_t ao_data = {.url = "/ao", .title = "Analog outputs", .category = "AO", .butName = "setAO"};
+	html_sendForm(req, &ao_data);
+
+	const html_form_t tempr_data = {.url = "/tempr", .title = "Analog outputs", .category = "tempr"};
+	html_sendForm(req, &ao_data);
+
+
+	if((err = httpd_resp_send_chunk(req, html_footer, strlen(html_footer))) !=ESP_OK) return err;
+	if((err = httpd_resp_send_chunk(req, html_html_e, strlen(html_html_e))) !=ESP_OK) return err;
+	return ESP_OK;
+}
+#endif
+
+
+// TODO buttons and sliders for tag
+
+
+
+err_t html_sendConfigContent(httpd_req_t *req, http_category_t* cat, uint8_t num){
+	esp_err_t err;
+	if((err = httpd_resp_send_chunk(req, html_html_b, strlen(html_html_b))) !=ESP_OK) return err;
+	if((err = sendStyle(req)) !=ESP_OK) return err;
+	if((err = httpd_resp_send_chunk(req, html_header, strlen(html_header))) !=ESP_OK) return err;
+
+	if((err = sendSideBar(req)) !=ESP_OK) return err;
+
+	if((err = httpd_resp_send_chunk(req, cnt, strlen(cnt))) !=ESP_OK) return err;
+
+	for (int i=0; i<num; i++){
+		html_sendForm(req, &cat[i]);
+	}
+
+	if((err = httpd_resp_send_chunk(req, cntEnd, strlen(cntEnd))) !=ESP_OK) return err;
+
+	return ESP_OK;
+}
+/*
 err_t sendNtpHtml(httpd_req_t *req){
 	esp_err_t err;
 	return ESP_OK;
-}
+}*/
 
 void html_webVisElementHeader(char* buff, const char* style, const char* label){
 	strcat(buff,"<td>");
@@ -234,7 +363,7 @@ char* html_webInputFieldElement(char* buff, const char* style, const char* label
 }
 #endif
 
-char* html_webCheckBoxElement(char* buff, char* style, const char* label, bool value, const char* name){
+char* html_webCheckBoxElement1(char* buff, char* style, const char* label, bool value, const char* name){
 	strcat(buff,"<div");
 	//size_t *size;
 	//size = strlen(style);
@@ -244,6 +373,46 @@ char* html_webCheckBoxElement(char* buff, char* style, const char* label, bool v
 		strcat(buff,"\"");
 	}
 	strcat(buff,"> <label><input type=\"checkbox\" id=\"");
+	strcat(buff,name);
+	strcat(buff,"1\"");
+
+	if(value) { strcat(buff," checked ");}
+	strcat(buff,"/>");
+	strcat(buff,label);
+	strcat(buff,"</label><input type=\"hidden\" name=\"");
+	//strcat(buff,name);
+	strcat(buff,"\" id=\"");
+	strcat(buff,name);
+	strcat(buff,"2");
+	strcat(buff,"\" value=\"");
+	if(value) {strcat(buff, "on");} else { strcat(buff, "off");}
+	strcat(buff, "\"><script> var el");
+	strcat(buff,name);
+	strcat(buff, " = document.querySelector('#");
+	strcat(buff,name);
+	strcat(buff,"1");
+	strcat(buff,"'); el");
+	strcat(buff,name);
+	strcat(buff, ".onclick = function() {if (el");
+	strcat(buff,name);
+	strcat(buff, ".checked) { document.getElementById('");
+	strcat(buff,name);
+	strcat(buff,"2");
+	strcat(buff,"').value ='on'; } else { document.getElementById('");
+	strcat(buff,name);
+	strcat(buff,"2");
+	strcat(buff,"').value ='off';}} </script> </div>");
+	return buff;
+}
+
+char* html_webCheckBoxElement(char* buff, char* style, const char* label, bool value, const char* name){
+	strcat(buff,"<td>");
+	strcat(buff,name);
+	strcat(buff,"</td>");
+
+	strcat(buff,"<td>");
+
+	strcat(buff,"<label><input type=\"checkbox\" id=\"");
 	strcat(buff,name);
 	strcat(buff,"1\"");
 
@@ -273,6 +442,7 @@ char* html_webCheckBoxElement(char* buff, char* style, const char* label, bool v
 	strcat(buff,name);
 	strcat(buff,"2");
 	strcat(buff,"').value ='off';}} </script> </div>");
+	strcat(buff,"</td>");
 	return buff;
 }
 
@@ -346,4 +516,8 @@ void http_createNetParsList(char* buff){
 
 void parsePostWebServerRequest(char* buff){		//838, 815
 
+}
+
+void html_init(){
+	esp_log_level_set(TAG, html_log_level);
 }
